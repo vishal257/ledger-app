@@ -74,8 +74,8 @@
 
             
             <div class="overflow-visible w-full">
-                <table class="w-full text-left border-collapse" id="items-table">
-                    <thead>
+                <table class="w-full text-left border-collapse block md:table" id="items-table">
+                    <thead class="hidden md:table-header-group">
                         <tr class="bg-gray-50 text-gray-600 text-sm">
                             <th class="p-3 border border-gray-200 font-semibold w-12 text-center">No.</th>
                             <th class="p-3 border border-gray-200 font-semibold w-1/4">WOOD CATEGORY</th>
@@ -85,12 +85,14 @@
                             <th class="p-3 border border-gray-200 font-semibold w-12 text-center"></th>
                         </tr>
                     </thead>
-                    <tbody id="items-body">
-                        <tr class="item-row">
-                            <td class="p-2 border border-gray-200 text-center">
-                                <input type="text" name="item_desc[]" value="1" readonly tabindex="-1" class="item-number-input w-full p-1 bg-transparent border-0 text-center font-medium text-gray-600 focus:ring-0 cursor-default">
+                    <tbody id="items-body" class="block md:table-row-group">
+                        <tr class="item-row block md:table-row border border-gray-300 md:border-none rounded-lg bg-gray-50 md:bg-transparent mb-4 p-4 md:p-0 shadow-sm md:shadow-none">
+                            <td class="flex justify-between items-center md:table-cell p-2 md:border md:border-gray-200 text-center border-b border-gray-200 md:border-none">
+                                <span class="md:hidden text-xs font-semibold text-gray-500 uppercase">No.</span>
+                                <input type="text" name="item_desc[]" value="1" readonly tabindex="-1" class="item-number-input w-8 md:w-full p-1 bg-transparent border-0 text-right md:text-center font-medium text-gray-600 focus:ring-0 cursor-default">
                             </td>
-                            <td class="p-2 border border-gray-200">
+                            <td class="block md:table-cell p-2 md:border md:border-gray-200">
+                                <span class="md:hidden text-xs font-semibold text-gray-500 uppercase block mb-1">Wood Category</span>
                                 <div class="relative custom-dropdown-container">
                                     <input type="text" name="wood_category[]" required class="wood-category-input w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out cursor-pointer hover:border-gray-400" placeholder="Select or type..." autocomplete="off">
                                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
@@ -102,10 +104,23 @@
                                     </ul>
                                 </div>
                             </td>
-                            <td class="p-2 border border-gray-200"><input type="number" step="0.01" name="gross_weight[]" required class="calc-input w-full p-1 border-0 focus:ring-2 focus:ring-indigo-500 rounded text-right"></td>
-                            <td class="p-2 border border-gray-200"><input type="number" step="0.01" name="rate[]" required class="calc-input w-full p-1 border-0 focus:ring-2 focus:ring-indigo-500 rounded text-right"></td>
-                            <td class="p-2 border border-gray-200"><input type="number" step="0.01" name="amount[]" readonly class="w-full p-1 bg-gray-50 border-0 rounded text-right font-medium"></td>
-                            <td class="p-2 border border-gray-200 text-center"><button type="button" class="text-red-500 hover:text-red-700 remove-btn" disabled>&times;</button></td>
+                            <td class="flex justify-between items-center md:table-cell p-2 md:border md:border-gray-200">
+                                <span class="md:hidden text-xs font-semibold text-gray-500 uppercase">Gross Weight (KG)</span>
+                                <input type="number" step="0.01" name="gross_weight[]" required class="calc-input w-32 md:w-full p-1 border border-gray-300 md:border-0 focus:ring-2 focus:ring-indigo-500 rounded text-right">
+                            </td>
+                            <td class="flex justify-between items-center md:table-cell p-2 md:border md:border-gray-200">
+                                <span class="md:hidden text-xs font-semibold text-gray-500 uppercase">Rate (per 100)</span>
+                                <input type="number" step="0.01" name="rate[]" required class="calc-input w-32 md:w-full p-1 border border-gray-300 md:border-0 focus:ring-2 focus:ring-indigo-500 rounded text-right">
+                            </td>
+                            <td class="flex justify-between items-center md:table-cell p-2 md:border md:border-gray-200 bg-gray-100 md:bg-transparent rounded mt-2 md:mt-0">
+                                <span class="md:hidden text-xs font-semibold text-gray-500 uppercase">Amount</span>
+                                <input type="number" step="0.01" name="amount[]" readonly class="w-32 md:w-full p-1 bg-transparent md:bg-gray-50 border-0 rounded text-right font-medium text-gray-900">
+                            </td>
+                            <td class="flex justify-end md:table-cell p-2 md:border md:border-gray-200 text-center mt-2 md:mt-0 border-t border-gray-200 md:border-none">
+                                <button type="button" class="text-red-500 hover:text-red-700 remove-btn flex items-center md:block" disabled>
+                                    <span class="md:hidden mr-1 text-sm">Remove</span> &times;
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

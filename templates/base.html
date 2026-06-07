@@ -19,14 +19,16 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <a href="/" class="flex-shrink-0 flex items-center font-bold text-xl tracking-wider">
-                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        INVOICE MANAGER
+                    <a href="/" class="flex-shrink-0 flex items-center font-bold text-xl tracking-wider truncate">
+                        <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span class="hidden sm:inline">INVOICE MANAGER</span>
+                        <span class="sm:hidden text-lg">LEDGER</span>
                     </a>
                 </div>
-                <div class="flex items-center space-x-4">
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-4">
                     {% if current_user.is_authenticated %}
-                        <span class="text-indigo-200 text-sm hidden sm:block">Welcome, {{ current_user.username | title }}</span>
+                        <span class="text-indigo-200 text-sm">Welcome, {{ current_user.username | title }}</span>
                         <a href="{{ url_for('dashboard') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Dashboard</a>
                         <a href="{{ url_for('new_invoice') }}" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-500 hover:bg-indigo-400 transition">New Invoice</a>
                         <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Logout</a>
@@ -35,6 +37,30 @@
                         <a href="{{ url_for('register') }}" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-500 hover:bg-indigo-400 transition">Register</a>
                     {% endif %}
                 </div>
+                <!-- Mobile Menu Button -->
+                <div class="flex items-center md:hidden">
+                    <button type="button" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="inline-flex items-center justify-center p-2 rounded-md text-indigo-200 hover:text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Panel -->
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-indigo-500">
+                {% if current_user.is_authenticated %}
+                    <div class="px-3 py-2 text-base font-medium text-indigo-200 border-b border-indigo-500 mb-2">Welcome, {{ current_user.username | title }}</div>
+                    <a href="{{ url_for('dashboard') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition">Dashboard</a>
+                    <a href="{{ url_for('new_invoice') }}" class="block px-3 py-2 rounded-md text-base font-medium bg-indigo-500 hover:bg-indigo-400 transition">New Invoice</a>
+                    <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition mt-4">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition">Login</a>
+                    <a href="{{ url_for('register') }}" class="block px-3 py-2 rounded-md text-base font-medium bg-indigo-500 hover:bg-indigo-400 transition mt-2">Register</a>
+                {% endif %}
             </div>
         </div>
     </nav>
