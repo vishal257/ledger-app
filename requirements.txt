@@ -1,7 +1,7 @@
-Flask==2.2.5
-Flask-Login==0.6.2
-Flask-SQLAlchemy==3.0.3
-xhtml2pdf==0.2.11
-Werkzeug==2.2.3
-SQLAlchemy==2.0.12
+Flask
+Flask-Login
+Flask-SQLAlchemy
+xhtml2pdf
+Werkzeug
+SQLAlchemy
 psycopg2-binary
