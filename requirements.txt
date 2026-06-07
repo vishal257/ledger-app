@@ -1,7 +1,0 @@
-Flask
-Flask-Login
-Flask-SQLAlchemy
-xhtml2pdf
-Werkzeug
-SQLAlchemy
-psycopg2-binary
