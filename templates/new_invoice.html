@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg mb-8 overflow-hidden">
+    <div class="bg-indigo-600 px-6 py-4">
+        <h2 class="text-xl font-bold text-white">Create New Invoice</h2>
+    </div>
+    
+    <form action="{{ url_for('new_invoice') }}" method="POST" class="p-6">
+        
+        <!-- Document Details -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 border-b border-gray-200 pb-8">
+            <div class="col-span-1 md:col-span-4">
+                <h3 class="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">Document Details</h3>
+            </div>
+            
+            <div>
+                <label for="invoice_no" class="block text-sm font-medium text-gray-700 mb-1">Invoice No.</label>
+                <input type="text" name="invoice_no" id="invoice_no" required value="{{ next_invoice_no }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+            </div>
+            <div>
+                <label for="invoice_date" class="block text-sm font-medium text-gray-700 mb-1">Invoice Date</label>
+                <input type="date" name="invoice_date" id="invoice_date" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+            </div>
+            <div>
+                <label for="due_date" class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                <input type="date" name="due_date" id="due_date" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+            </div>
+            <div>
+                <label for="po_no" class="block text-sm font-medium text-gray-700 mb-1">PO No.</label>
+                <input type="text" name="po_no" id="po_no" value="{{ next_po_no }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+            </div>
+        </div>
+
+        <!-- Client Information -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 border-b border-gray-200 pb-8">
+            <div class="col-span-1 md:col-span-2 border-b border-gray-200 pb-2 mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Client Information</h3>
+            </div>
+            
+            <div id="client_info_fields" class="grid grid-cols-1 md:grid-cols-2 gap-6 col-span-1 md:col-span-2">
+                <div>
+                    <label for="client_name" class="block text-sm font-medium text-gray-700 mb-1">Bill To (Client Name) <span class="text-red-500">*</span></label>
+                    <input type="text" name="client_name" id="client_name" required class="client-input w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+                </div>
+                <div>
+                    <label for="contact_name" class="block text-sm font-medium text-gray-700 mb-1">Contact <span class="text-red-500">*</span></label>
+                    <input type="text" name="contact_name" id="contact_name" required class="client-input w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+                </div>
+                <div class="col-span-1 md:col-span-2">
+                    <label for="address_1" class="block text-sm font-medium text-gray-700 mb-1">Address Line 1</label>
+                    <input type="text" name="address_1" id="address_1" class="client-input w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+                </div>
+                <div>
+                    <label for="address_2" class="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+                    <input type="text" name="address_2" id="address_2" class="client-input w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+                </div>
+                <div>
+                    <label for="address_3" class="block text-sm font-medium text-gray-700 mb-1">Address Line 3</label>
+                    <input type="text" name="address_3" id="address_3" class="client-input w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border">
+                </div>
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="mb-8 border-b border-gray-200 pb-8">
+            <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Line Items</h3>
+                <button type="button" id="add-item-btn" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1 rounded text-sm font-medium transition">
+                    + Add Row
+                </button>
+            </div>
+            
+
+            
+            <div class="overflow-visible w-full">
+                <table class="w-full text-left border-collapse" id="items-table">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 text-sm">
+                            <th class="p-3 border border-gray-200 font-semibold w-12 text-center">No.</th>
+                            <th class="p-3 border border-gray-200 font-semibold w-1/4">WOOD CATEGORY</th>
+                            <th class="p-3 border border-gray-200 font-semibold w-1/6">GROSS WEIGHT (KG)</th>
+                            <th class="p-3 border border-gray-200 font-semibold w-1/6">Rate (per 100 units)</th>
+                            <th class="p-3 border border-gray-200 font-semibold w-1/6">Amount</th>
+                            <th class="p-3 border border-gray-200 font-semibold w-12 text-center"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-body">
+                        <tr class="item-row">
+                            <td class="p-2 border border-gray-200 text-center">
+                                <input type="text" name="item_desc[]" value="1" readonly tabindex="-1" class="item-number-input w-full p-1 bg-transparent border-0 text-center font-medium text-gray-600 focus:ring-0 cursor-default">
+                            </td>
+                            <td class="p-2 border border-gray-200">
+                                <div class="relative custom-dropdown-container">
+                                    <input type="text" name="wood_category[]" required class="wood-category-input w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out cursor-pointer hover:border-gray-400" placeholder="Select or type..." autocomplete="off">
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                          <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <ul class="custom-dropdown-menu absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm hidden">
+                                    </ul>
+                                </div>
+                            </td>
+                            <td class="p-2 border border-gray-200"><input type="number" step="0.01" name="gross_weight[]" required class="calc-input w-full p-1 border-0 focus:ring-2 focus:ring-indigo-500 rounded text-right"></td>
+                            <td class="p-2 border border-gray-200"><input type="number" step="0.01" name="rate[]" required class="calc-input w-full p-1 border-0 focus:ring-2 focus:ring-indigo-500 rounded text-right"></td>
+                            <td class="p-2 border border-gray-200"><input type="number" step="0.01" name="amount[]" readonly class="w-full p-1 bg-gray-50 border-0 rounded text-right font-medium"></td>
+                            <td class="p-2 border border-gray-200 text-center"><button type="button" class="text-red-500 hover:text-red-700 remove-btn" disabled>&times;</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Calculations -->
+        <div class="flex justify-end mb-8">
+            <div class="w-full md:w-1/3 bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-gray-600 font-medium">Subtotal:</span>
+                    <span>$ <input type="number" step="0.01" name="subtotal" id="subtotal" readonly class="w-24 bg-transparent border-0 text-right font-medium text-gray-800 p-0 focus:ring-0"></span>
+                </div>
+                
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-gray-600 font-medium flex items-center">
+                        Commission %
+                        <input type="number" step="0.01" name="commission_pct" id="commission_pct" value="0" class="ml-2 w-16 p-1 border border-gray-300 rounded text-right focus:ring-indigo-500 focus:border-indigo-500">
+                    </span>
+                    <span>$ <input type="number" step="0.01" name="commission_amt" id="commission_amt" readonly class="w-24 bg-transparent border-0 text-right font-medium text-gray-800 p-0 focus:ring-0"></span>
+                </div>
+                
+                <div class="flex justify-between items-center mb-3 border-t border-gray-200 pt-3">
+                    <span class="text-gray-600 font-medium flex items-center">
+                        <input type="checkbox" id="tax_enabled" name="tax_enabled" class="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        Tax %
+                        <input type="number" step="0.01" name="tax_pct" id="tax_pct" value="0" disabled class="ml-2 w-16 p-1 border border-gray-300 rounded text-right focus:ring-indigo-500 focus:border-indigo-500 bg-gray-100">
+                    </span>
+                    <span>$ <input type="number" step="0.01" name="tax_amt" id="tax_amt" readonly class="w-24 bg-transparent border-0 text-right font-medium text-gray-800 p-0 focus:ring-0"></span>
+                </div>
+                
+                <div class="flex justify-between items-center mt-4 pt-4 border-t-2 border-gray-300">
+                    <span class="text-lg font-bold text-gray-900">Total:</span>
+                    <span class="text-lg font-bold text-indigo-700">$ <input type="number" step="0.01" name="total" id="total" readonly class="w-28 bg-transparent border-0 text-right font-bold text-indigo-700 p-0 focus:ring-0"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-150 ease-in-out text-lg">
+                Generate & Save
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Edit Category Modal -->
+<div id="editCategoryModal" class="fixed z-50 inset-0 overflow-y-auto hidden" aria-labelledby="edit-modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeEditCategoryModal()"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <h3 class="text-lg leading-6 font-medium text-gray-900" id="edit-modal-title">Rename Category</h3>
+        <div class="mt-2">
+            <input type="text" id="editCategoryInput" class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border" placeholder="Category Name">
+        </div>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" id="saveEditCategoryBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+          Save
+        </button>
+        <button type="button" onclick="closeEditCategoryModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Category Modal -->
+<div id="deleteCategoryModal" class="fixed z-50 inset-0 overflow-y-auto hidden" aria-labelledby="delete-modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeDeleteCategoryModal()"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div class="sm:flex sm:items-start">
+          <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+            <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <h3 class="text-lg leading-6 font-medium text-gray-900" id="delete-modal-title">Delete Category</h3>
+            <div class="mt-2">
+              <p class="text-sm text-gray-500">Are you sure you want to delete <span id="deleteCategoryName" class="font-bold"></span>? This will remove it from the dropdown options.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" id="confirmDeleteCategoryBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+          Delete
+        </button>
+        <button type="button" onclick="closeDeleteCategoryModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.CURRENT_USER_ID = "{{ current_user.id }}";
+</script>
+<script src="{{ url_for('static', filename='js/invoice.js') }}"></script>
+{% endblock %}

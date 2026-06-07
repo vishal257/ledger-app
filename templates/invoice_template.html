@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice {{ invoice.invoice_no }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 2cm;
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 2cm;
+                margin-left: 2cm;
+                margin-right: 2cm;
+                height: 1cm;
+            }
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e3a8a; /* Indigo-900 */
+        }
+        .company-details {
+            font-size: 12px;
+            margin-top: 5px;
+            color: #666;
+        }
+        .invoice-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-decoration: underline;
+        }
+        .info-table {
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        .info-table td {
+            vertical-align: top;
+        }
+        .bill-to {
+            width: 60%;
+        }
+        .invoice-meta {
+            width: 40%;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .items-table th {
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            padding: 8px;
+            font-weight: bold;
+            text-align: left;
+        }
+        .items-table td {
+            border: 1px solid #d1d5db;
+            padding: 8px;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .summary-table {
+            width: 50%;
+            float: right;
+            border-collapse: collapse;
+        }
+        .summary-table td {
+            padding: 5px 8px;
+            border: 1px solid #d1d5db;
+        }
+        .summary-table th {
+            padding: 5px 8px;
+            border: 1px solid #d1d5db;
+            text-align: left;
+            background-color: #f3f4f6;
+        }
+        .summary-total {
+            font-weight: bold;
+            font-size: 14px;
+            background-color: #e0e7ff; /* Indigo-100 */
+        }
+        .clear {
+            clear: both;
+        }
+        .footer-details {
+            margin-top: 50px;
+            width: 100%;
+        }
+        .footer-details td {
+            vertical-align: bottom;
+        }
+        .signature-box {
+            text-align: right;
+        }
+        .signature-line {
+            display: inline-block;
+            border-top: 1px solid #333;
+            width: 200px;
+            margin-top: 50px;
+            padding-top: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="company-name">J.M.D ENTERPRICES</div>
+        <div class="company-details">
+            NEAR PETROL PUMP, BHIKOWAL, DISTT.HOSHIARPUR<br>
+            Email: Satyamsh20111@gmail.com | Mobile: 9592348990
+        </div>
+    </div>
+
+    <div class="invoice-title">INVOICE</div>
+
+    <table class="info-table">
+        <tr>
+            <td class="bill-to">
+                <strong>Bill To:</strong><br>
+                {{ invoice.client_name }}<br>
+                {% if invoice.contact_name %}{{ invoice.contact_name }}<br>{% endif %}
+                {{ invoice.address_1 }}<br>
+                {% if invoice.address_2 %}{{ invoice.address_2 }}<br>{% endif %}
+                {% if invoice.address_3 %}{{ invoice.address_3 }}<br>{% endif %}
+            </td>
+            <td class="invoice-meta text-right">
+                <strong>Invoice No:</strong> {{ invoice.invoice_no }}<br>
+                <strong>Date:</strong> {{ invoice.invoice_date.strftime('%d-%b-%Y') }}<br>
+                <strong>Due Date:</strong> {{ invoice.due_date.strftime('%d-%b-%Y') }}<br>
+                {% if invoice.po_no %}<strong>PO No:</strong> {{ invoice.po_no }}<br>{% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 5%; text-align: center;">No.</th>
+                <th style="width: 35%;">WOOD CATEGORY</th>
+                <th class="text-right" style="width: 20%;">GROSS WEIGHT (KG)</th>
+                <th class="text-right" style="width: 20%;">Rate (per 100)</th>
+                <th class="text-right" style="width: 20%;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in invoice.items %}
+            <tr>
+                <td class="text-center">{{ item.item_desc }}</td>
+                <td>{{ item.wood_category }}</td>
+                <td class="text-right">{{ "%.2f"|format(item.gross_weight) }}</td>
+                <td class="text-right">{{ "%.2f"|format(item.rate) }}</td>
+                <td class="text-right">{{ "%.2f"|format(item.amount) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="summary-table">
+        <tr>
+            <th>Subtotal</th>
+            <td class="text-right">{{ "%.2f"|format(invoice.subtotal) }}</td>
+        </tr>
+        <tr>
+            <th>Commission ({{ "%.2f"|format(invoice.commission_pct) }}%)</th>
+            <td class="text-right">{{ "%.2f"|format(invoice.commission_amt) }}</td>
+        </tr>
+        {% if invoice.tax_enabled %}
+        <tr>
+            <th>Tax ({{ "%.2f"|format(invoice.tax_pct) }}%)</th>
+            <td class="text-right">{{ "%.2f"|format(invoice.tax_amt) }}</td>
+        </tr>
+        {% endif %}
+        <tr class="summary-total">
+            <th>Total</th>
+            <td class="text-right">{{ "%.2f"|format(invoice.total) }}</td>
+        </tr>
+    </table>
+    
+    <div class="clear"></div>
+
+    <table class="footer-details">
+        <tr>
+            <td style="width: 50%;">
+                <strong>Payment Instructions:</strong><br>
+                Please make checks payable to J.M.D ENTERPRICES.<br>
+                <br>
+                <strong>Notes:</strong><br>
+                Thank you for your business!
+            </td>
+            <td class="signature-box" style="width: 50%;">
+                <div class="signature-line">Authorized Signatory</div>
+            </td>
+        </tr>
+    </table>
+
+    <div id="footerContent">
+        <div style="text-align: center; color: #777; font-size: 10px;">
+            Page <pdf:pagenumber> of <pdf:pagecount>
+        </div>
+    </div>
+
+</body>
+</html>
