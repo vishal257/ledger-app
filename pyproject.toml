@@ -1,12 +1,12 @@
 [project]
 name = "ledger-app"
 version = "0.1.0"
-requires-python = ">=3.9, <3.10"
+requires-python = ">=3.12"
 dependencies = [
     "Flask",
     "Flask-Login",
     "Flask-SQLAlchemy",
-    "xhtml2pdf==0.2.11",
+    "xhtml2pdf==0.2.16",
     "svglib==1.5.1",
     "Werkzeug",
     "SQLAlchemy",
