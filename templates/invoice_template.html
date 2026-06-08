@@ -121,13 +121,38 @@
         }
     </style>
     <style media="screen">
-        @media (max-width: 600px) {
-            body { margin: 10px; }
-            .info-table, .footer-details { display: flex; flex-direction: column; gap: 15px; }
-            .info-table td, .footer-details td { width: 100% !important; display: block; text-align: left !important; }
-            .items-table-wrapper { overflow-x: auto; width: 100%; margin-bottom: 20px; }
-            .items-table { min-width: 500px; margin-bottom: 0; }
-            .summary-table { width: 100% !important; float: none !important; margin-top: 10px; }
+        @media screen and (max-width: 1024px) {
+            body { 
+                margin: 15px; 
+            }
+            .info-table, .info-table tbody, .info-table tr, .info-table td, 
+            .footer-details, .footer-details tbody, .footer-details tr, .footer-details td { 
+                display: block !important; 
+                width: 100% !important; 
+                box-sizing: border-box !important;
+            }
+            .info-table tr, .footer-details tr { margin-bottom: 15px !important; }
+            .info-table td, .footer-details td { text-align: left !important; padding: 0 0 10px 0 !important; border: none !important; }
+            
+            .items-table-wrapper { 
+                display: block !important;
+                width: 100% !important; 
+                overflow-x: auto !important; 
+                margin-bottom: 20px !important; 
+                -webkit-overflow-scrolling: touch !important; 
+            }
+            .items-table { 
+                width: 100% !important;
+                min-width: 600px !important; 
+                margin-bottom: 0 !important; 
+            }
+            
+            .summary-table { 
+                display: table !important;
+                width: 100% !important; 
+                float: none !important; 
+                margin-top: 20px !important; 
+            }
             .signature-box { text-align: left !important; }
             .signature-line { margin-top: 20px !important; }
         }
