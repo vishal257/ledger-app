@@ -36,6 +36,7 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'visha
 db.init_app(app)
 
 with app.app_context():
+    db.create_all()
     from sqlalchemy import text
     columns = [
         'company_name VARCHAR(200)',
