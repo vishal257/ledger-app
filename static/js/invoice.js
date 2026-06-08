@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         e.stopPropagation();
                         currentEditingCategory = opt;
                         currentTargetInput = input;
+                        currentDropdownType = 'wood';
                         document.getElementById('editCategoryInput').value = opt;
                         document.getElementById('editCategoryModal').classList.remove('hidden');
                         setTimeout(() => document.getElementById('editCategoryInput').focus(), 50);
@@ -97,6 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         e.stopPropagation();
                         currentDeletingCategory = opt;
                         currentTargetInput = input;
+                        currentDropdownType = 'wood';
                         document.getElementById('deleteCategoryName').textContent = opt;
                         document.getElementById('deleteCategoryModal').classList.remove('hidden');
                     });
@@ -185,6 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentEditingCategory = null;
     let currentDeletingCategory = null;
     let currentTargetInput = null;
+    let currentDropdownType = 'wood'; // 'wood' or 'charge'
 
     document.getElementById('saveEditCategoryBtn').addEventListener('click', function() {
         const inputField = document.getElementById('editCategoryInput');
@@ -193,32 +196,61 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (newName && newName.trim() !== '' && newName.toUpperCase() !== opt) {
             const newCat = newName.trim().toUpperCase();
-            const rate = defaultRates[opt];
             
-            delete defaultRates[opt];
-            delete customRates[opt];
-            if (!deletedRates.includes(opt)) deletedRates.push(opt);
-            
-            defaultRates[newCat] = rate;
-            customRates[newCat] = rate;
-            
-            localStorage.setItem(customRatesKey, JSON.stringify(customRates));
-            localStorage.setItem(deletedRatesKey, JSON.stringify(deletedRates));
-            
-            const index = woodOptions.indexOf(opt);
-            if (index > -1) woodOptions[index] = newCat;
-            else if (!woodOptions.includes(newCat)) woodOptions.push(newCat);
+            if (currentDropdownType === 'wood') {
+                const rate = defaultRates[opt];
+                delete defaultRates[opt];
+                delete customRates[opt];
+                if (!deletedRates.includes(opt)) deletedRates.push(opt);
+                
+                defaultRates[newCat] = rate;
+                customRates[newCat] = rate;
+                
+                localStorage.setItem(customRatesKey, JSON.stringify(customRates));
+                localStorage.setItem(deletedRatesKey, JSON.stringify(deletedRates));
+                
+                const index = woodOptions.indexOf(opt);
+                if (index > -1) woodOptions[index] = newCat;
+                else if (!woodOptions.includes(newCat)) woodOptions.push(newCat);
+                
+                // Re-render
+                const containers = document.querySelectorAll('.custom-dropdown-container');
+                containers.forEach(c => {
+                    const input = c.querySelector('.wood-category-input');
+                    if (input && input.value === opt) {
+                        input.value = newCat;
+                    }
+                });
+            } else if (currentDropdownType === 'charge') {
+                const rate = defaultChargeRates[opt];
+                delete defaultChargeRates[opt];
+                delete customChargeRates[opt];
+                
+                // Assuming we also want to track deleted charge rates so they don't respawn
+                let deletedChargeRates = JSON.parse(localStorage.getItem(`deletedChargeRates_${userId}`)) || [];
+                if (!deletedChargeRates.includes(opt)) deletedChargeRates.push(opt);
+                
+                defaultChargeRates[newCat] = rate;
+                customChargeRates[newCat] = rate;
+                
+                localStorage.setItem(customChargeRatesKey, JSON.stringify(customChargeRates));
+                localStorage.setItem(`deletedChargeRates_${userId}`, JSON.stringify(deletedChargeRates));
+                
+                const index = chargeOptions.indexOf(opt);
+                if (index > -1) chargeOptions[index] = newCat;
+                else if (!chargeOptions.includes(newCat)) chargeOptions.push(newCat);
+                
+                // Re-render
+                const containers = document.querySelectorAll('.custom-dropdown-container');
+                containers.forEach(c => {
+                    const input = c.querySelector('.charge-name-input');
+                    if (input && input.value === opt) {
+                        input.value = newCat;
+                    }
+                });
+            }
             
             closeEditCategoryModal();
-            
-            // Re-render
-            const containers = document.querySelectorAll('.custom-dropdown-container');
-            containers.forEach(c => {
-                const input = c.querySelector('.wood-category-input');
-                if (input.value === opt) {
-                    input.value = newCat;
-                }
-            });
             
             if (currentTargetInput) {
                 currentTargetInput.focus();
@@ -232,15 +264,29 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('confirmDeleteCategoryBtn').addEventListener('click', function() {
         const opt = currentDeletingCategory;
         if (opt) {
-            delete defaultRates[opt];
-            delete customRates[opt];
-            if (!deletedRates.includes(opt)) deletedRates.push(opt);
-            
-            localStorage.setItem(customRatesKey, JSON.stringify(customRates));
-            localStorage.setItem(deletedRatesKey, JSON.stringify(deletedRates));
-            
-            const index = woodOptions.indexOf(opt);
-            if (index > -1) woodOptions.splice(index, 1);
+            if (currentDropdownType === 'wood') {
+                delete defaultRates[opt];
+                delete customRates[opt];
+                if (!deletedRates.includes(opt)) deletedRates.push(opt);
+                
+                localStorage.setItem(customRatesKey, JSON.stringify(customRates));
+                localStorage.setItem(deletedRatesKey, JSON.stringify(deletedRates));
+                
+                const index = woodOptions.indexOf(opt);
+                if (index > -1) woodOptions.splice(index, 1);
+            } else if (currentDropdownType === 'charge') {
+                delete defaultChargeRates[opt];
+                delete customChargeRates[opt];
+                
+                let deletedChargeRates = JSON.parse(localStorage.getItem(`deletedChargeRates_${userId}`)) || [];
+                if (!deletedChargeRates.includes(opt)) deletedChargeRates.push(opt);
+                
+                localStorage.setItem(customChargeRatesKey, JSON.stringify(customChargeRates));
+                localStorage.setItem(`deletedChargeRates_${userId}`, JSON.stringify(deletedChargeRates));
+                
+                const index = chargeOptions.indexOf(opt);
+                if (index > -1) chargeOptions.splice(index, 1);
+            }
             
             closeDeleteCategoryModal();
             
@@ -443,13 +489,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Additional Charges Logic
     const customChargeRatesKey = `customChargeRates_${userId}`;
+    const deletedChargeRatesKey = `deletedChargeRates_${userId}`;
+    
     const customChargeRates = JSON.parse(localStorage.getItem(customChargeRatesKey)) || {};
+    let deletedChargeRates = JSON.parse(localStorage.getItem(deletedChargeRatesKey)) || [];
     
     const defaultChargeRates = {
         'LABOR': 500,
         'TRANSPORT': 1000,
         ...customChargeRates
     };
+    
+    deletedChargeRates.forEach(d => delete defaultChargeRates[d]);
     
     let chargeOptions = Object.keys(defaultChargeRates);
     
@@ -472,13 +523,52 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 filtered.forEach(opt => {
                     const li = document.createElement('li');
-                    li.className = "text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-3 hover:bg-indigo-600 hover:text-white flex justify-between items-center";
+                    li.className = "text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-3 hover:bg-indigo-600 hover:text-white flex justify-between items-center group";
                     
                     const span = document.createElement('span');
                     span.textContent = opt;
                     li.appendChild(span);
                     
+                    const actionDiv = document.createElement('div');
+                    actionDiv.className = "flex space-x-2 items-center ml-4";
+                    
+                    // Edit button
+                    const editBtn = document.createElement('button');
+                    editBtn.type = "button";
+                    editBtn.className = "text-gray-400 hover:text-indigo-200 focus:outline-none p-1 z-10";
+                    editBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
+                    editBtn.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        currentEditingCategory = opt;
+                        currentTargetInput = input;
+                        currentDropdownType = 'charge';
+                        document.getElementById('editCategoryInput').value = opt;
+                        document.getElementById('editCategoryModal').classList.remove('hidden');
+                        setTimeout(() => document.getElementById('editCategoryInput').focus(), 50);
+                    });
+                    
+                    // Delete button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = "button";
+                    deleteBtn.className = "text-gray-400 hover:text-red-300 focus:outline-none p-1 transition-colors";
+                    deleteBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`;
+                    deleteBtn.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        currentDeletingCategory = opt;
+                        currentTargetInput = input;
+                        currentDropdownType = 'charge';
+                        document.getElementById('deleteCategoryName').textContent = opt;
+                        document.getElementById('deleteCategoryModal').classList.remove('hidden');
+                    });
+                    
+                    actionDiv.appendChild(editBtn);
+                    actionDiv.appendChild(deleteBtn);
+                    li.appendChild(actionDiv);
+                    
                     li.addEventListener('mousedown', function(e) {
+                        if (e.target.closest('button')) return; // ignore clicks on action buttons
                         e.preventDefault();
                         input.value = opt;
                         menu.classList.add('hidden');
