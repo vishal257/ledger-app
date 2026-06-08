@@ -7,7 +7,8 @@ from xhtml2pdf import pisa
 from io import BytesIO
 from itsdangerous import URLSafeTimedSerializer
 from markupsafe import Markup
-from flask_mail import Mail, Message
+import json
+import urllib.request
 
 from models import db, User, Invoice, InvoiceItem
 from sqlalchemy.pool import NullPool
@@ -27,17 +28,11 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'developmen
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Mail Configuration
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', '1', 'yes']
-app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', '1', 'yes']
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', os.environ.get('MAIL_USERNAME', 'noreply@ledgerapp.com'))
+# Mail Configuration (Resend API)
+app.config['MAIL_API_KEY'] = os.environ.get('MAIL_PASSWORD')  # Your Resend API Key
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
 
 db.init_app(app)
-mail = Mail(app)
 
 with app.app_context():
     from sqlalchemy import text
@@ -164,17 +159,26 @@ def forgot_password():
             reset_url = url_for('reset_password', token=token, _external=True)
             
             try:
-                msg = Message(
-                    "Ledger - Password Reset Request", 
-                    recipients=[user.company_email] if user.company_email else [os.environ.get('MAIL_USERNAME')]
-                )
-                msg.body = f"Hello {user.username},\n\nTo reset your Ledger password, visit the following link:\n{reset_url}\n\nIf you did not request this, please ignore this email."
-                mail.send(msg)
+                # Vercel blocks SMTP ports, so we must use the Resend REST API directly
+                req = urllib.request.Request('https://api.resend.com/emails', method='POST')
+                req.add_header('Authorization', f"Bearer {app.config['MAIL_API_KEY']}")
+                req.add_header('Content-Type', 'application/json')
+                
+                recipient = user.company_email if user.company_email else "delivered@resend.dev"
+                
+                data = json.dumps({
+                    "from": f"Ledger App <{app.config['MAIL_DEFAULT_SENDER']}>",
+                    "to": [recipient],
+                    "subject": "Ledger - Password Reset Request",
+                    "html": f"<p>Hello {user.username},</p><p>To reset your Ledger password, visit the following link:</p><p><a href='{reset_url}'>{reset_url}</a></p><p>If you did not request this, please ignore this email.</p>"
+                }).encode('utf-8')
+                
+                urllib.request.urlopen(req, data=data, timeout=10)
                 flash('An email with instructions to reset your password has been sent.', 'success')
             except Exception as e:
-                # Fallback if SMTP is not configured properly or fails
-                print(f"Failed to send email: {e}")
-                flash('Failed to send reset email. Ensure your email configuration is correct.', 'error')
+                # Fallback if API fails
+                print(f"Failed to send email via Resend API: {e}")
+                flash('Failed to send reset email. Ensure your Resend API Key is correct in Vercel.', 'error')
                 
         else:
             flash(f'No account found with the username "{username}". Please check the spelling and try again.', 'error')
