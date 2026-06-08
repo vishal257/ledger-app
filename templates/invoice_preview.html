@@ -74,26 +74,62 @@
             </table>
         </div>
 
+        {% if invoice.additional_charges %}
+        <div class="mt-8 mb-8 overflow-hidden border border-gray-200 rounded-lg shadow-sm">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 text-gray-600 text-sm border-b border-gray-200">
+                        <th class="py-3 px-4 font-medium">Additional Charges (Deductions)</th>
+                        <th class="py-3 px-4 text-right font-medium">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700 divide-y divide-gray-200">
+                    {% for charge in invoice.additional_charges %}
+                    <tr>
+                        <td class="py-3 px-4">{{ charge.charge_name }}</td>
+                        <td class="py-3 px-4 text-right text-red-600 font-medium">- ₹{{ "%.2f"|format(charge.rate) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
         <!-- Summary -->
         <div class="flex justify-end mb-16">
             <div class="w-full md:w-1/2">
                 <table class="w-full text-right text-gray-700">
                     <tr class="border-b border-gray-200">
-                        <th class="py-2 px-3 font-medium text-gray-500">Subtotal</th>
-                        <td class="py-2 px-3">₹{{ "%.2f"|format(invoice.subtotal) }}</td>
+                        <th class="py-2 px-3 font-medium text-gray-500">Gross Subtotal</th>
+                        <td class="py-2 px-3 text-gray-900">₹{{ "%.2f"|format(invoice.subtotal) }}</td>
                     </tr>
                     <tr class="border-b border-gray-200">
-                        <th class="py-2 px-3 font-medium text-gray-500">Commission ({{ "%.2f"|format(invoice.commission_pct) }}%)</th>
-                        <td class="py-2 px-3">₹{{ "%.2f"|format(invoice.commission_amt) }}</td>
+                        <th class="py-2 px-3 font-medium text-gray-500">Less: Commission ({{ "%.2f"|format(invoice.commission_pct) }}%)</th>
+                        <td class="py-2 px-3 text-red-600">- ₹{{ "%.2f"|format(invoice.commission_amt) }}</td>
                     </tr>
+                    
+                    {% set charges_total = invoice.additional_charges | sum(attribute='rate') if invoice.additional_charges else 0 %}
+                    {% if charges_total > 0 %}
+                    <tr class="border-b border-gray-200">
+                        <th class="py-2 px-3 font-medium text-gray-500">Less: Additional Charges</th>
+                        <td class="py-2 px-3 text-red-600">- ₹{{ "%.2f"|format(charges_total) }}</td>
+                    </tr>
+                    {% endif %}
+                    
+                    {% set net_subtotal = invoice.subtotal - invoice.commission_amt - charges_total %}
+                    <tr class="border-b border-gray-200">
+                        <th class="py-2 px-3 font-bold text-gray-800">Net Subtotal</th>
+                        <td class="py-2 px-3 font-bold text-gray-800">₹{{ "%.2f"|format(net_subtotal) }}</td>
+                    </tr>
+
                     {% if invoice.tax_enabled %}
                     <tr class="border-b border-gray-200">
-                        <th class="py-2 px-3 font-medium text-gray-500">Tax ({{ "%.2f"|format(invoice.tax_pct) }}%)</th>
-                        <td class="py-2 px-3">₹{{ "%.2f"|format(invoice.tax_amt) }}</td>
+                        <th class="py-2 px-3 font-medium text-gray-500">Add: Tax ({{ "%.2f"|format(invoice.tax_pct) }}%)</th>
+                        <td class="py-2 px-3 text-gray-900">+ ₹{{ "%.2f"|format(invoice.tax_amt) }}</td>
                     </tr>
                     {% endif %}
                     <tr class="text-lg text-indigo-900 bg-indigo-50">
-                        <th class="py-3 px-3 font-bold rounded-l-md">Total</th>
+                        <th class="py-3 px-3 font-bold rounded-l-md">Net Total Payable</th>
                         <td class="py-3 px-3 font-bold rounded-r-md">₹{{ "%.2f"|format(invoice.total) }}</td>
                     </tr>
                 </table>

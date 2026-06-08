@@ -625,11 +625,11 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
             <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                 <div class="custom-dropdown-container relative">
-                    <input type="text" name="charge_name[]" required class="charge-name-input block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border" placeholder="Select or type charge" autocomplete="off">
+                    <input type="text" name="charge_name[]" required class="charge-name-input block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border text-gray-900 font-medium" placeholder="Select or type charge" autocomplete="off">
                 </div>
             </td>
             <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 w-32">
-                <input type="number" step="0.01" name="charge_rate[]" required class="calc-input block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-right p-2 border">
+                <input type="number" step="0.01" name="charge_rate[]" required class="calc-input block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-right p-2 border text-gray-900 font-medium">
             </td>
             <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-center text-sm font-medium sm:pr-6 w-16">
                 <button type="button" class="text-red-500 hover:text-red-700 remove-charge-btn p-1">
