@@ -206,8 +206,8 @@
                     <td class="text-center">{{ item.item_desc }}</td>
                     <td>{{ item.wood_category }}</td>
                     <td class="text-right">{{ "%.2f"|format(item.gross_weight) }}</td>
-                    <td class="text-right">{{ "%.2f"|format(item.rate) }}</td>
-                    <td class="text-right">{{ "%.2f"|format(item.amount) }}</td>
+                    <td class="text-right">₹{{ "%.2f"|format(item.rate) }}</td>
+                    <td class="text-right">₹{{ "%.2f"|format(item.amount) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -217,21 +217,21 @@
     <table class="summary-table">
         <tr>
             <th>Subtotal</th>
-            <td class="text-right">{{ "%.2f"|format(invoice.subtotal) }}</td>
+            <td class="text-right">₹{{ "%.2f"|format(invoice.subtotal) }}</td>
         </tr>
         <tr>
             <th>Commission ({{ "%.2f"|format(invoice.commission_pct) }}%)</th>
-            <td class="text-right">{{ "%.2f"|format(invoice.commission_amt) }}</td>
+            <td class="text-right">₹{{ "%.2f"|format(invoice.commission_amt) }}</td>
         </tr>
         {% if invoice.tax_enabled %}
         <tr>
             <th>Tax ({{ "%.2f"|format(invoice.tax_pct) }}%)</th>
-            <td class="text-right">{{ "%.2f"|format(invoice.tax_amt) }}</td>
+            <td class="text-right">₹{{ "%.2f"|format(invoice.tax_amt) }}</td>
         </tr>
         {% endif %}
         <tr class="summary-total">
             <th>Total</th>
-            <td class="text-right">{{ "%.2f"|format(invoice.total) }}</td>
+            <td class="text-right">₹{{ "%.2f"|format(invoice.total) }}</td>
         </tr>
     </table>
     
