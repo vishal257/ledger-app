@@ -9,6 +9,60 @@
         </a>
     </div>
     
+    <!-- Analytics Section -->
+    <div class="px-6 py-6 border-b border-gray-200 bg-gray-100 hidden" id="analytics-section">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="bg-white rounded-lg shadow p-5 border-l-4 border-indigo-500">
+                <p class="text-sm font-medium text-gray-500 truncate">Total Revenue</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900" id="stat-total-revenue">₹0.00</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-5 border-l-4 border-green-500">
+                <p class="text-sm font-medium text-gray-500 truncate">Total Commissions</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900" id="stat-total-commission">₹0.00</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-5 border-l-4 border-yellow-500">
+                <p class="text-sm font-medium text-gray-500 truncate">Top Wood Category</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900" id="stat-top-wood">-</p>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Line Chart (takes up 2 columns on lg) -->
+            <div class="bg-white rounded-lg shadow p-5 col-span-1 lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-md font-semibold text-gray-800">Revenue & Commissions</h4>
+                    <select id="chart-time-filter" class="text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 border py-1 px-2">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly" selected>Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="revenueLineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Doughnut Chart -->
+            <div class="bg-white rounded-lg shadow p-5 col-span-1">
+                <h4 class="text-md font-semibold text-gray-800 mb-4">Sales by Category</h4>
+                <div class="relative h-64 w-full">
+                    <canvas id="woodDoughnutChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bar Chart -->
+        <div class="bg-white rounded-lg shadow p-5 mt-6">
+            <h4 class="text-md font-semibold text-gray-800 mb-4">Volume by Category (KG)</h4>
+            <div class="relative h-64 w-full">
+                <canvas id="woodBarChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
     {% if invoices %}
     <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
         <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 items-end">
@@ -228,4 +282,9 @@
         document.getElementById('deleteModal').classList.add('hidden');
     }
 </script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard_charts.js') }}"></script>
 {% endblock %}

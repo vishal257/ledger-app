@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, flash, request, make_response
+from flask import Flask, render_template, redirect, url_for, flash, request, make_response, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from xhtml2pdf import pisa
@@ -82,6 +82,48 @@ def logout():
 def dashboard():
     invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.created_at.desc()).all()
     return render_template('dashboard.html', invoices=invoices)
+
+@app.route('/api/dashboard/stats')
+@login_required
+def dashboard_stats():
+    invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.invoice_date.asc()).all()
+    
+    revenue_over_time = []
+    daily_stats = {}
+    
+    for inv in invoices:
+        date_str = inv.invoice_date.strftime('%Y-%m-%d')
+        if date_str not in daily_stats:
+            daily_stats[date_str] = {"revenue": 0.0, "commission": 0.0, "count": 0}
+        
+        daily_stats[date_str]["revenue"] += inv.total
+        daily_stats[date_str]["commission"] += inv.commission_amt
+        daily_stats[date_str]["count"] += 1
+        
+    for date_str, stats in daily_stats.items():
+        revenue_over_time.append({
+            "date": date_str,
+            "revenue": stats["revenue"],
+            "commission": stats["commission"],
+            "count": stats["count"]
+        })
+        
+    revenue_over_time.sort(key=lambda x: x["date"])
+    
+    # Wood distribution
+    wood_stats = {}
+    for inv in invoices:
+        for item in inv.items:
+            cat = item.wood_category or "UNKNOWN"
+            if cat not in wood_stats:
+                wood_stats[cat] = {"weight": 0.0, "amount": 0.0}
+            wood_stats[cat]["weight"] += item.gross_weight
+            wood_stats[cat]["amount"] += item.amount
+            
+    return jsonify({
+        "revenue_over_time": revenue_over_time,
+        "wood_distribution": wood_stats
+    })
 
 @app.route('/invoice/new', methods=['GET', 'POST'])
 @login_required
