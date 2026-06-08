@@ -155,6 +155,10 @@ def forgot_password():
         
         user = User.query.filter_by(username=username).first()
         if user:
+            if not user.company_email:
+                flash(f'No email address is associated with the account "{username}". Please contact an administrator to recover your account.', 'error')
+                return redirect(url_for('forgot_password'))
+                
             s = get_reset_serializer()
             token = s.dumps(user.username, salt='password-reset-salt')
             reset_url = url_for('reset_password', token=token, _external=True)
