@@ -10,5 +10,6 @@ dependencies = [
     "svglib==1.5.1",
     "Werkzeug",
     "SQLAlchemy",
-    "psycopg2-binary"
+    "psycopg2-binary",
+    "Flask-Mail>=0.10.0"
 ]
