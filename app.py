@@ -11,7 +11,7 @@ import json
 import urllib.request
 import urllib.error
 
-from models import db, User, Invoice, InvoiceItem
+from models import db, User, Invoice, InvoiceItem, AdditionalCharge
 from sqlalchemy.pool import NullPool
 
 app = Flask(__name__)
@@ -418,6 +418,20 @@ def new_invoice():
                 amount=float(amounts[i]) if i < len(amounts) and amounts[i] else 0.0
             )
             db.session.add(item)
+            
+        # Add additional charges
+        charge_names = request.form.getlist('charge_name[]')
+        charge_rates = request.form.getlist('charge_rate[]')
+        
+        for i in range(len(charge_names)):
+            if charge_names[i].strip() == '':
+                continue
+            charge = AdditionalCharge(
+                invoice_id=invoice.id,
+                charge_name=charge_names[i],
+                rate=float(charge_rates[i]) if i < len(charge_rates) and charge_rates[i] else 0.0
+            )
+            db.session.add(charge)
             
         db.session.commit()
         return redirect(url_for('view_invoice', invoice_id=invoice.id))

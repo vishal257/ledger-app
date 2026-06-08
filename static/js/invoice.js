@@ -1,9 +1,16 @@
 document.addEventListener('DOMContentLoaded', function() {
     const itemsBody = document.getElementById('items-body');
     const addItemBtn = document.getElementById('add-item-btn');
+    
+    const chargesBody = document.getElementById('charges-body');
+    const addChargeBtn = document.getElementById('add-charge-btn');
+    
     const subtotalEl = document.getElementById('subtotal');
     const commissionPctEl = document.getElementById('commission_pct');
     const commissionAmtEl = document.getElementById('commission_amt');
+    
+    const chargesTotalAmtEl = document.getElementById('charges_total_amt');
+    const netSubtotalEl = document.getElementById('net_subtotal');
     
     const taxEnabledEl = document.getElementById('tax_enabled');
     const taxPctEl = document.getElementById('tax_pct');
@@ -257,12 +264,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 numInput.value = index + 1;
             }
         });
+        
+        if (chargesBody) {
+            const cRows = chargesBody.querySelectorAll('.charge-row');
+            cRows.forEach((row, index) => {
+                const numInput = row.querySelector('.charge-number-input');
+                if (numInput) {
+                    numInput.value = index + 1;
+                }
+            });
+        }
     }
 
     function updateCalculations() {
         let subtotal = 0;
         
-        // Calculate each row
+        // Calculate each row in Line Items
         const rows = itemsBody.querySelectorAll('.item-row');
         rows.forEach(row => {
             const weightInput = row.querySelector('input[name="gross_weight[]"]');
@@ -281,18 +298,34 @@ document.addEventListener('DOMContentLoaded', function() {
         
         subtotalEl.value = subtotal.toFixed(2);
         
-        // Calculate Commission
+        // Calculate Commission (DEDUCTION)
         const commissionPct = parseFloat(commissionPctEl.value) || 0;
         const commissionAmt = subtotal * (commissionPct / 100);
         commissionAmtEl.value = commissionAmt.toFixed(2);
         
-        // Calculate Tax
+        // Calculate Additional Charges (DEDUCTION)
+        let chargesTotal = 0;
+        if (chargesBody) {
+            const cRows = chargesBody.querySelectorAll('.charge-row');
+            cRows.forEach(row => {
+                const rateInput = row.querySelector('input[name="charge_rate[]"]');
+                const rate = parseFloat(rateInput.value) || 0;
+                chargesTotal += rate;
+            });
+        }
+        if (chargesTotalAmtEl) chargesTotalAmtEl.value = chargesTotal.toFixed(2);
+        
+        // Net Subtotal = Gross Subtotal - Commission - Charges
+        const netSubtotal = subtotal - commissionAmt - chargesTotal;
+        if (netSubtotalEl) netSubtotalEl.value = netSubtotal.toFixed(2);
+        
+        // Calculate Tax (Applied to Net Subtotal)
         let taxAmt = 0;
         if (taxEnabledEl.checked) {
             taxPctEl.disabled = false;
             taxPctEl.classList.remove('bg-slate-100');
             const taxPct = parseFloat(taxPctEl.value) || 0;
-            taxAmt = subtotal * (taxPct / 100);
+            taxAmt = netSubtotal * (taxPct / 100);
         } else {
             taxPctEl.disabled = true;
             taxPctEl.classList.add('bg-slate-100');
@@ -301,9 +334,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         taxAmtEl.value = taxAmt.toFixed(2);
         
-        // Calculate Total
-        // Assuming Commission and Tax are added to subtotal for the final payable amount
-        const total = subtotal + taxAmt + commissionAmt;
+        // Final Total = Net Subtotal + Tax
+        const total = netSubtotal + taxAmt;
         totalEl.value = total.toFixed(2);
     }
 
@@ -407,6 +439,164 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             btns.forEach(btn => btn.disabled = false);
         }
+    }
+    
+    // Additional Charges Logic
+    const customChargeRatesKey = `customChargeRates_${userId}`;
+    const customChargeRates = JSON.parse(localStorage.getItem(customChargeRatesKey)) || {};
+    
+    const defaultChargeRates = {
+        'LABOR': 500,
+        'TRANSPORT': 1000,
+        ...customChargeRates
+    };
+    
+    let chargeOptions = Object.keys(defaultChargeRates);
+    
+    function setupChargeDropdown(container) {
+        const input = container.querySelector('.charge-name-input');
+        let menu = container.querySelector('.custom-dropdown-menu');
+        
+        if (!menu) {
+            menu = document.createElement('ul');
+            menu.className = "custom-dropdown-menu absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm hidden";
+            container.appendChild(menu);
+        }
+        
+        function renderOptions(filterText = "") {
+            menu.innerHTML = '';
+            const filtered = chargeOptions.filter(opt => opt.toLowerCase().includes(filterText.toLowerCase()));
+            
+            if (filtered.length === 0 && filterText.trim() === '') {
+                menu.innerHTML = '<li class="text-gray-500 cursor-default select-none relative py-2 pl-3 pr-9 text-sm italic">No matching options</li>';
+            } else {
+                filtered.forEach(opt => {
+                    const li = document.createElement('li');
+                    li.className = "text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-3 hover:bg-indigo-600 hover:text-white flex justify-between items-center";
+                    
+                    const span = document.createElement('span');
+                    span.textContent = opt;
+                    li.appendChild(span);
+                    
+                    li.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        input.value = opt;
+                        menu.classList.add('hidden');
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    menu.appendChild(li);
+                });
+                
+                const exactMatch = filtered.find(opt => opt.toLowerCase() === filterText.toLowerCase().trim());
+                if (!exactMatch && filterText.trim() !== '') {
+                    const addLi = document.createElement('li');
+                    addLi.className = "text-indigo-600 font-medium cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 border-t border-gray-100";
+                    addLi.innerHTML = `+ Add "${filterText.trim().toUpperCase()}"`;
+                    addLi.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        const newCat = filterText.trim().toUpperCase();
+                        
+                        if (!chargeOptions.includes(newCat)) {
+                            chargeOptions.push(newCat);
+                            defaultChargeRates[newCat] = 0;
+                            customChargeRates[newCat] = 0;
+                            localStorage.setItem(customChargeRatesKey, JSON.stringify(customChargeRates));
+                        }
+                        
+                        input.value = newCat;
+                        menu.classList.add('hidden');
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                        
+                        const row = input.closest('.charge-row');
+                        if (row) {
+                            const rateInput = row.querySelector('input[name="charge_rate[]"]');
+                            if (rateInput) setTimeout(() => rateInput.focus(), 10);
+                        }
+                    });
+                    menu.appendChild(addLi);
+                }
+            }
+        }
+        
+        input.addEventListener('focus', () => { renderOptions(input.value); menu.classList.remove('hidden'); });
+        input.addEventListener('input', () => { renderOptions(input.value); menu.classList.remove('hidden'); });
+        input.addEventListener('blur', () => { menu.classList.add('hidden'); });
+        document.addEventListener('click', (e) => { if (!container.contains(e.target)) menu.classList.add('hidden'); });
+    }
+    
+    function createChargeRow() {
+        const tr = document.createElement('tr');
+        tr.className = 'charge-row';
+        tr.innerHTML = `
+            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 w-16">
+                <input type="text" class="charge-number-input bg-transparent border-0 w-8 text-center p-0 text-gray-500" readonly>
+            </td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                <div class="custom-dropdown-container relative">
+                    <input type="text" name="charge_name[]" required class="charge-name-input block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border" placeholder="Select or type charge" autocomplete="off">
+                </div>
+            </td>
+            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 w-32">
+                <input type="number" step="0.01" name="charge_rate[]" required class="calc-input block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-right p-2 border">
+            </td>
+            <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-center text-sm font-medium sm:pr-6 w-16">
+                <button type="button" class="text-red-500 hover:text-red-700 remove-charge-btn p-1">
+                    <svg class="h-5 w-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </td>
+        `;
+        return tr;
+    }
+    
+    if (addChargeBtn) {
+        addChargeBtn.addEventListener('click', function() {
+            const row = createChargeRow();
+            chargesBody.appendChild(row);
+            
+            const dropContainer = row.querySelector('.custom-dropdown-container');
+            setupChargeDropdown(dropContainer);
+            
+            const rateInput = row.querySelector('input[name="charge_rate[]"]');
+            rateInput.addEventListener('input', updateCalculations);
+            
+            updateRowNumbers();
+        });
+        
+        chargesBody.addEventListener('change', function(e) {
+            if (e.target.classList.contains('charge-name-input')) {
+                const row = e.target.closest('.charge-row');
+                const rateInput = row.querySelector('input[name="charge_rate[]"]');
+                const category = e.target.value.toUpperCase();
+                
+                if (defaultChargeRates[category] !== undefined && (!rateInput.value || rateInput.value == 0)) {
+                    rateInput.value = defaultChargeRates[category];
+                }
+                updateCalculations();
+            } else if (e.target.name === 'charge_rate[]') {
+                const row = e.target.closest('.charge-row');
+                const nameInput = row.querySelector('.charge-name-input');
+                const category = nameInput.value.toUpperCase().trim();
+                const newRate = parseFloat(e.target.value);
+                
+                if (category && !isNaN(newRate) && newRate > 0) {
+                    defaultChargeRates[category] = newRate;
+                    customChargeRates[category] = newRate;
+                    localStorage.setItem(customChargeRatesKey, JSON.stringify(customChargeRates));
+                    if (!chargeOptions.includes(category)) chargeOptions.push(category);
+                }
+            }
+        });
+        
+        chargesBody.addEventListener('click', function(e) {
+            const btn = e.target.closest('.remove-charge-btn');
+            if (btn) {
+                btn.closest('tr').remove();
+                updateCalculations();
+                updateRowNumbers();
+            }
+        });
     }
 
     // Attach events to existing rows

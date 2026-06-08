@@ -213,24 +213,62 @@
             </tbody>
         </table>
     </div>
+    
+    {% if invoice.additional_charges %}
+    <div class="items-table-wrapper" style="margin-top: 15px;">
+        <table class="items-table" style="width: 60%; margin-left: 0;">
+            <thead>
+                <tr>
+                    <th style="width: 10%; text-align: center;">No.</th>
+                    <th style="width: 60%;">ADDITIONAL CHARGES (Deductions)</th>
+                    <th class="text-right" style="width: 30%;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for charge in invoice.additional_charges %}
+                <tr>
+                    <td class="text-center">{{ loop.index }}</td>
+                    <td>{{ charge.charge_name }}</td>
+                    <td class="text-right text-red-600">- Rs. {{ "%.2f"|format(charge.rate) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
 
     <table class="summary-table">
         <tr>
-            <th>Subtotal</th>
+            <th>Gross Subtotal</th>
             <td class="text-right">Rs. {{ "%.2f"|format(invoice.subtotal) }}</td>
         </tr>
         <tr>
-            <th>Commission ({{ "%.2f"|format(invoice.commission_pct) }}%)</th>
-            <td class="text-right">Rs. {{ "%.2f"|format(invoice.commission_amt) }}</td>
+            <th>Less: Commission ({{ "%.2f"|format(invoice.commission_pct) }}%)</th>
+            <td class="text-right text-red-600">- Rs. {{ "%.2f"|format(invoice.commission_amt) }}</td>
         </tr>
+        
+        {% set charges_total = invoice.additional_charges | sum(attribute='rate') if invoice.additional_charges else 0 %}
+        {% if charges_total > 0 %}
+        <tr>
+            <th>Less: Additional Charges</th>
+            <td class="text-right text-red-600">- Rs. {{ "%.2f"|format(charges_total) }}</td>
+        </tr>
+        {% endif %}
+        
+        {% set net_subtotal = invoice.subtotal - invoice.commission_amt - charges_total %}
+        <tr>
+            <th>Net Subtotal</th>
+            <td class="text-right">Rs. {{ "%.2f"|format(net_subtotal) }}</td>
+        </tr>
+
         {% if invoice.tax_enabled %}
         <tr>
-            <th>Tax ({{ "%.2f"|format(invoice.tax_pct) }}%)</th>
+            <th>Add: Tax ({{ "%.2f"|format(invoice.tax_pct) }}%)</th>
             <td class="text-right">Rs. {{ "%.2f"|format(invoice.tax_amt) }}</td>
         </tr>
         {% endif %}
         <tr class="summary-total">
-            <th>Total</th>
+            <th>Final Total</th>
             <td class="text-right">Rs. {{ "%.2f"|format(invoice.total) }}</td>
         </tr>
     </table>

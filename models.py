@@ -47,6 +47,14 @@ class Invoice(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade="all, delete-orphan")
+    additional_charges = db.relationship('AdditionalCharge', backref='invoice', lazy=True, cascade="all, delete-orphan")
+
+class AdditionalCharge(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
+    
+    charge_name = db.Column(db.String(200), nullable=False)
+    rate = db.Column(db.Float, nullable=False)
 
 class InvoiceItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
