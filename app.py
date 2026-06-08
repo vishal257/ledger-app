@@ -164,6 +164,7 @@ def forgot_password():
                 req = urllib.request.Request('https://api.resend.com/emails', method='POST')
                 req.add_header('Authorization', f"Bearer {app.config['MAIL_API_KEY']}")
                 req.add_header('Content-Type', 'application/json')
+                req.add_header('User-Agent', 'LedgerApp/1.0')
                 
                 recipient = user.company_email if user.company_email else "delivered@resend.dev"
                 
