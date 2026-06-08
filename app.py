@@ -170,6 +170,42 @@ def forgot_password():
                 # If they didn't provide a company email, fallback to sending it to themselves for testing
                 recipient = user.company_email if user.company_email else app.config['MAIL_DEFAULT_SENDER']
                 
+                email_html = f"""
+                <!DOCTYPE html>
+                <html>
+                <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 40px 0;">
+                    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        <tr>
+                            <td style="background-color: #4f46e5; padding: 40px; text-align: center;">
+                                <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold; letter-spacing: 1px;">LEDGER</h1>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 40px 40px;">
+                                <h2 style="color: #111827; margin-top: 0; font-size: 22px; font-weight: 600;">Reset Your Password</h2>
+                                <p style="color: #4b5563; font-size: 16px; line-height: 24px;">Hello {user.username},</p>
+                                <p style="color: #4b5563; font-size: 16px; line-height: 24px;">We received a request to reset the password for your Ledger account. You can easily create a new password by clicking the button below.</p>
+                                
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 35px 0;">
+                                    <tr>
+                                        <td align="center">
+                                            <a href="{reset_url}" style="background-color: #4f46e5; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
+                                        </td>
+                                    </tr>
+                                </table>
+                                
+                                <p style="color: #6b7280; font-size: 14px; line-height: 20px;">If the button above doesn't work, copy and paste the following link into your web browser:</p>
+                                <p style="color: #4f46e5; font-size: 14px; word-break: break-all;"><a href="{reset_url}" style="color: #4f46e5;">{reset_url}</a></p>
+                                
+                                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+                                <p style="color: #9ca3af; font-size: 13px; margin: 0; text-align: center; line-height: 20px;">If you didn't request a password reset, you can safely ignore this email. Your account remains secure.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """
+                
                 data = json.dumps({
                     "sender": {
                         "name": "Ledger App",
@@ -181,7 +217,7 @@ def forgot_password():
                         }
                     ],
                     "subject": "Ledger - Password Reset Request",
-                    "htmlContent": f"<p>Hello {user.username},</p><p>To reset your Ledger password, visit the following link:</p><p><a href='{reset_url}'>{reset_url}</a></p><p>If you did not request this, please ignore this email.</p>"
+                    "htmlContent": email_html
                 }).encode('utf-8')
                 
                 urllib.request.urlopen(req, data=data, timeout=10)
