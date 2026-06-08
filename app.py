@@ -5,6 +5,9 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.security import generate_password_hash, check_password_hash
 from xhtml2pdf import pisa
 from io import BytesIO
+from itsdangerous import URLSafeTimedSerializer
+from markupsafe import Markup
+from flask_mail import Mail, Message
 
 from models import db, User, Invoice, InvoiceItem
 
@@ -15,7 +18,21 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Production Security Headers
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'development' # Secure in prod
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Mail Configuration
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', '1', 'yes']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', os.environ.get('MAIL_USERNAME', 'noreply@ledgerapp.com'))
+
 db.init_app(app)
+mail = Mail(app)
 
 with app.app_context():
     from sqlalchemy import text
@@ -86,11 +103,13 @@ def register():
             username = username.strip().title()
         password = request.form.get('password')
         
-        company_name = request.form.get('company_name', 'J.M.D ENTERPRICES')
-        company_address = request.form.get('company_address', 'NEAR PETROL PUMP, BHIKOWAL, DISTT.HOSHIARPUR')
-        company_email = request.form.get('company_email', 'Satyamsh20111@gmail.com')
-        company_phone = request.form.get('company_phone', '9592348990')
-        payment_instructions = request.form.get('payment_instructions', 'Please make checks payable to J.M.D ENTERPRICES.')
+        company_name = request.form.get('company_name', '').strip()
+        company_address = request.form.get('company_address', '')
+        company_email = request.form.get('company_email', '')
+        company_phone = request.form.get('company_phone', '')
+        
+        default_instructions = f'Please make checks payable to {company_name}.' if company_name else 'Please make checks payable to Your Company Name.'
+        payment_instructions = request.form.get('payment_instructions') or default_instructions
         invoice_notes = request.form.get('invoice_notes', 'Thank you for your business!')
         
         user = User.query.filter_by(username=username).first()
@@ -119,6 +138,80 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+def get_reset_serializer():
+    return URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        if username:
+            username = username.strip().title()
+        
+        user = User.query.filter_by(username=username).first()
+        if user:
+            s = get_reset_serializer()
+            token = s.dumps(user.username, salt='password-reset-salt')
+            reset_url = url_for('reset_password', token=token, _external=True)
+            
+            try:
+                msg = Message(
+                    "Ledger - Password Reset Request", 
+                    recipients=[user.company_email] if user.company_email else [os.environ.get('MAIL_USERNAME')]
+                )
+                msg.body = f"Hello {user.username},\n\nTo reset your Ledger password, visit the following link:\n{reset_url}\n\nIf you did not request this, please ignore this email."
+                mail.send(msg)
+                flash('An email with instructions to reset your password has been sent.', 'success')
+            except Exception as e:
+                # Fallback if SMTP is not configured properly or fails
+                print(f"Failed to send email: {e}")
+                flash('Failed to send reset email. Ensure your email configuration is correct.', 'error')
+                
+        else:
+            flash(f'No account found with the username "{username}". Please check the spelling and try again.', 'error')
+            return redirect(url_for('forgot_password'))
+            
+        return redirect(url_for('login'))
+        
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+        
+    s = get_reset_serializer()
+    try:
+        # Token expires in 1 hour (3600 seconds)
+        username = s.loads(token, salt='password-reset-salt', max_age=3600)
+    except Exception:
+        flash('The password reset link is invalid or has expired.', 'error')
+        return redirect(url_for('forgot_password'))
+        
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        flash('Invalid user.', 'error')
+        return redirect(url_for('forgot_password'))
+        
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if len(password) < 8:
+            flash('Password must be at least 8 characters.', 'error')
+        elif password != confirm_password:
+            flash('Passwords do not match.', 'error')
+        else:
+            user.password_hash = generate_password_hash(password)
+            db.session.commit()
+            flash('Your password has been updated! You can now log in.', 'success')
+            return redirect(url_for('login'))
+            
+    return render_template('reset_password.html', token=token)
 
 @app.route('/settings', methods=['GET', 'POST'])
 @login_required
@@ -325,8 +418,17 @@ def delete_invoice(invoice_id):
         
     db.session.delete(invoice)
     db.session.commit()
-    flash(f'Invoice {invoice.invoice_no} deleted successfully.', 'success')
+    flash(f'Invoice {invoice.invoice_no} deleted successfully.', 'success')    
     return redirect(url_for('dashboard'))
+
+# Global Error Handlers
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('500.html'), 500
 
 if __name__ == '__main__':
     with app.app_context():

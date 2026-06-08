@@ -161,10 +161,10 @@
 <body>
 
     <div class="header">
-        <div class="company-name">{{ invoice.user.company_name or 'J.M.D ENTERPRICES' }}</div>
+        <div class="company-name">{{ invoice.user.company_name or 'Your Company Name' }}</div>
         <div class="company-details">
-            {{ invoice.user.company_address or 'NEAR PETROL PUMP, BHIKOWAL, DISTT.HOSHIARPUR' }}<br>
-            Email: {{ invoice.user.company_email or 'Satyamsh20111@gmail.com' }} | Mobile: {{ invoice.user.company_phone or '9592348990' }}
+            {{ invoice.user.company_address or '123 Business Road, Business City' }}<br>
+            Email: {{ invoice.user.company_email or 'contact@example.com' }} | Mobile: {{ invoice.user.company_phone or '(555) 123-4567' }}
         </div>
     </div>
 
@@ -241,7 +241,7 @@
         <tr>
             <td style="width: 50%;">
                 <strong>Payment Instructions:</strong><br>
-                {{ invoice.user.payment_instructions or 'Please make checks payable to ' ~ (invoice.user.company_name or 'J.M.D ENTERPRICES') ~ '.' }}<br>
+                {{ invoice.user.payment_instructions or 'Please make checks payable to ' ~ (invoice.user.company_name or 'Your Company Name') ~ '.' }}<br>
                 <br>
                 <strong>Notes:</strong><br>
                 {{ invoice.user.invoice_notes or 'Thank you for your business!' }}
