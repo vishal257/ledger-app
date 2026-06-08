@@ -9,6 +9,7 @@ from itsdangerous import URLSafeTimedSerializer
 from markupsafe import Markup
 import json
 import urllib.request
+import urllib.error
 
 from models import db, User, Invoice, InvoiceItem
 from sqlalchemy.pool import NullPool
@@ -175,10 +176,21 @@ def forgot_password():
                 
                 urllib.request.urlopen(req, data=data, timeout=10)
                 flash('An email with instructions to reset your password has been sent.', 'success')
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode('utf-8')
+                print(f"Resend API HTTP Error: {e.code} - {error_body}")
+                
+                try:
+                    resend_err = json.loads(error_body)
+                    error_message = resend_err.get('message', 'Unknown Resend Error')
+                except:
+                    error_message = error_body
+                    
+                flash(f'Resend API Rejected the email: {error_message}', 'error')
             except Exception as e:
-                # Fallback if API fails
+                # Fallback if API fails (network error, etc)
                 print(f"Failed to send email via Resend API: {e}")
-                flash('Failed to send reset email. Ensure your Resend API Key is correct in Vercel.', 'error')
+                flash('Failed to connect to Resend API. Check Vercel logs.', 'error')
                 
         else:
             flash(f'No account found with the username "{username}". Please check the spelling and try again.', 'error')
