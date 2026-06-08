@@ -31,6 +31,7 @@
                         <span class="text-indigo-200 text-sm">Welcome, {{ current_user.username | title }}</span>
                         <a href="{{ url_for('dashboard') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Dashboard</a>
                         <a href="{{ url_for('new_invoice') }}" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-500 hover:bg-indigo-400 transition">New Invoice</a>
+                        <a href="{{ url_for('settings') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Settings</a>
                         <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Logout</a>
                     {% else %}
                         <a href="{{ url_for('login') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Login</a>
@@ -56,7 +57,8 @@
                     <div class="px-3 py-2 text-base font-medium text-indigo-200 border-b border-indigo-500 mb-2">Welcome, {{ current_user.username | title }}</div>
                     <a href="{{ url_for('dashboard') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition">Dashboard</a>
                     <a href="{{ url_for('new_invoice') }}" class="block px-3 py-2 rounded-md text-base font-medium bg-indigo-500 hover:bg-indigo-400 transition">New Invoice</a>
-                    <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition mt-4">Logout</a>
+                    <a href="{{ url_for('settings') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition mt-4">Settings</a>
+                    <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition mt-2">Logout</a>
                 {% else %}
                     <a href="{{ url_for('login') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition">Login</a>
                     <a href="{{ url_for('register') }}" class="block px-3 py-2 rounded-md text-base font-medium bg-indigo-500 hover:bg-indigo-400 transition mt-2">Register</a>
@@ -81,7 +83,7 @@
 
     <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
-            &copy; 2026 J.M.D ENTERPRICES Invoice Manager. All rights reserved.
+            &copy; 2026 {% if current_user.is_authenticated %}{{ current_user.company_name or 'Invoice Manager' }}{% else %}Invoice Manager{% endif %}. All rights reserved.
         </div>
     </footer>
     

@@ -17,9 +17,9 @@
     <div class="p-10 md:p-16">
         <!-- Header -->
         <div class="text-center mb-10">
-            <h1 class="text-3xl font-bold text-indigo-900">J.M.D ENTERPRICES</h1>
-            <p class="text-gray-500 text-sm mt-1">NEAR PETROL PUMP, BHIKOWAL, DISTT.HOSHIARPUR</p>
-            <p class="text-gray-500 text-sm">Email: Satyamsh20111@gmail.com | Mobile: 9592348990</p>
+            <h1 class="text-3xl font-bold text-indigo-900">{{ invoice.user.company_name or 'J.M.D ENTERPRICES' }}</h1>
+            <p class="text-gray-500 text-sm mt-1">{{ invoice.user.company_address or 'NEAR PETROL PUMP, BHIKOWAL, DISTT.HOSHIARPUR' }}</p>
+            <p class="text-gray-500 text-sm">Email: {{ invoice.user.company_email or 'Satyamsh20111@gmail.com' }} | Mobile: {{ invoice.user.company_phone or '9592348990' }}</p>
         </div>
 
         <div class="text-center text-xl font-bold tracking-wider underline mb-8">INVOICE</div>
@@ -102,11 +102,11 @@
 
         <!-- Footer -->
         <div class="flex justify-between items-end mt-16 text-gray-600 border-t border-gray-200 pt-8">
-            <div class="w-1/2 text-sm">
+            <div class="w-1/2 text-sm whitespace-pre-wrap">
                 <h4 class="font-bold text-gray-800 mb-1">Payment Instructions:</h4>
-                <p class="mb-4">Please make checks payable to J.M.D ENTERPRICES.</p>
+                <p class="mb-4">{{ invoice.user.payment_instructions or 'Please make checks payable to ' ~ (invoice.user.company_name or 'J.M.D ENTERPRICES') ~ '.' }}</p>
                 <h4 class="font-bold text-gray-800 mb-1">Notes:</h4>
-                <p>Thank you for your business!</p>
+                <p>{{ invoice.user.invoice_notes or 'Thank you for your business!' }}</p>
             </div>
             <div class="w-1/2 text-right">
                 <div class="inline-block border-t border-gray-800 w-48 text-center pt-2 font-bold text-gray-800">

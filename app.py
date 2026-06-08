@@ -17,6 +17,23 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
+with app.app_context():
+    from sqlalchemy import text
+    columns = [
+        'company_name VARCHAR(200)',
+        'company_address VARCHAR(500)',
+        'company_email VARCHAR(150)',
+        'company_phone VARCHAR(50)',
+        'payment_instructions TEXT',
+        'invoice_notes TEXT'
+    ]
+    for col in columns:
+        try:
+            db.session.execute(text(f'ALTER TABLE user ADD COLUMN {col}'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
 login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
@@ -56,13 +73,26 @@ def register():
             username = username.strip().title()
         password = request.form.get('password')
         
+        company_name = request.form.get('company_name', 'J.M.D ENTERPRICES')
+        company_address = request.form.get('company_address', 'NEAR PETROL PUMP, BHIKOWAL, DISTT.HOSHIARPUR')
+        company_email = request.form.get('company_email', 'Satyamsh20111@gmail.com')
+        company_phone = request.form.get('company_phone', '9592348990')
+        payment_instructions = request.form.get('payment_instructions', 'Please make checks payable to J.M.D ENTERPRICES.')
+        invoice_notes = request.form.get('invoice_notes', 'Thank you for your business!')
+        
         user = User.query.filter_by(username=username).first()
         if user:
             flash('Username already exists', 'error')
         else:
             new_user = User(
                 username=username,
-                password_hash=generate_password_hash(password, method='pbkdf2:sha256')
+                password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
+                company_name=company_name,
+                company_address=company_address,
+                company_email=company_email,
+                company_phone=company_phone,
+                payment_instructions=payment_instructions,
+                invoice_notes=invoice_notes
             )
             db.session.add(new_user)
             db.session.commit()
@@ -76,6 +106,21 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    if request.method == 'POST':
+        current_user.company_name = request.form.get('company_name', '')
+        current_user.company_address = request.form.get('company_address', '')
+        current_user.company_email = request.form.get('company_email', '')
+        current_user.company_phone = request.form.get('company_phone', '')
+        current_user.payment_instructions = request.form.get('payment_instructions', '')
+        current_user.invoice_notes = request.form.get('invoice_notes', '')
+        db.session.commit()
+        flash('Settings updated successfully', 'success')
+        return redirect(url_for('settings'))
+    return render_template('settings.html')
 
 @app.route('/dashboard')
 @login_required

@@ -8,6 +8,15 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    
+    # Company Profile Details
+    company_name = db.Column(db.String(200), nullable=True)
+    company_address = db.Column(db.String(500), nullable=True)
+    company_email = db.Column(db.String(150), nullable=True)
+    company_phone = db.Column(db.String(50), nullable=True)
+    payment_instructions = db.Column(db.Text, nullable=True)
+    invoice_notes = db.Column(db.Text, nullable=True)
+
     invoices = db.relationship('Invoice', backref='user', lazy=True)
 
 class Invoice(db.Model):
