@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice {{ invoice.invoice_no }}</title>
     <style>
         @page {
@@ -119,6 +120,18 @@
             font-weight: bold;
         }
     </style>
+    <style media="screen">
+        @media (max-width: 600px) {
+            body { margin: 10px; }
+            .info-table, .footer-details { display: flex; flex-direction: column; gap: 15px; }
+            .info-table td, .footer-details td { width: 100% !important; display: block; text-align: left !important; }
+            .items-table-wrapper { overflow-x: auto; width: 100%; margin-bottom: 20px; }
+            .items-table { min-width: 500px; margin-bottom: 0; }
+            .summary-table { width: 100% !important; float: none !important; margin-top: 10px; }
+            .signature-box { text-align: left !important; }
+            .signature-line { margin-top: 20px !important; }
+        }
+    </style>
 </head>
 <body>
 
@@ -151,28 +164,30 @@
         </tr>
     </table>
 
-    <table class="items-table">
-        <thead>
-            <tr>
-                <th style="width: 5%; text-align: center;">No.</th>
-                <th style="width: 35%;">WOOD CATEGORY</th>
-                <th class="text-right" style="width: 20%;">GROSS WEIGHT (KG)</th>
-                <th class="text-right" style="width: 20%;">Rate (per 100)</th>
-                <th class="text-right" style="width: 20%;">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in invoice.items %}
-            <tr>
-                <td class="text-center">{{ item.item_desc }}</td>
-                <td>{{ item.wood_category }}</td>
-                <td class="text-right">{{ "%.2f"|format(item.gross_weight) }}</td>
-                <td class="text-right">{{ "%.2f"|format(item.rate) }}</td>
-                <td class="text-right">{{ "%.2f"|format(item.amount) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="items-table-wrapper">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%; text-align: center;">No.</th>
+                    <th style="width: 35%;">WOOD CATEGORY</th>
+                    <th class="text-right" style="width: 20%;">GROSS WEIGHT (KG)</th>
+                    <th class="text-right" style="width: 20%;">Rate (per 100)</th>
+                    <th class="text-right" style="width: 20%;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in invoice.items %}
+                <tr>
+                    <td class="text-center">{{ item.item_desc }}</td>
+                    <td>{{ item.wood_category }}</td>
+                    <td class="text-right">{{ "%.2f"|format(item.gross_weight) }}</td>
+                    <td class="text-right">{{ "%.2f"|format(item.rate) }}</td>
+                    <td class="text-right">{{ "%.2f"|format(item.amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <table class="summary-table">
         <tr>
