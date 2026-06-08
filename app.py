@@ -29,9 +29,9 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'developmen
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Mail Configuration (Resend API)
-app.config['MAIL_API_KEY'] = os.environ.get('MAIL_PASSWORD')  # Your Resend API Key
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
+# Mail Configuration (Brevo API)
+app.config['MAIL_API_KEY'] = os.environ.get('MAIL_PASSWORD')  # Your Brevo API Key
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'vishal.webengg@gmail.com')
 
 db.init_app(app)
 
@@ -160,38 +160,47 @@ def forgot_password():
             reset_url = url_for('reset_password', token=token, _external=True)
             
             try:
-                # Vercel blocks SMTP ports, so we must use the Resend REST API directly
-                req = urllib.request.Request('https://api.resend.com/emails', method='POST')
-                req.add_header('Authorization', f"Bearer {app.config['MAIL_API_KEY']}")
+                # Vercel blocks SMTP ports, so we must use the Brevo REST API directly
+                req = urllib.request.Request('https://api.brevo.com/v3/smtp/email', method='POST')
+                req.add_header('api-key', app.config['MAIL_API_KEY'])
                 req.add_header('Content-Type', 'application/json')
+                req.add_header('Accept', 'application/json')
                 req.add_header('User-Agent', 'LedgerApp/1.0')
                 
-                recipient = user.company_email if user.company_email else "delivered@resend.dev"
+                # If they didn't provide a company email, fallback to sending it to themselves for testing
+                recipient = user.company_email if user.company_email else app.config['MAIL_DEFAULT_SENDER']
                 
                 data = json.dumps({
-                    "from": f"Ledger App <{app.config['MAIL_DEFAULT_SENDER']}>",
-                    "to": [recipient],
+                    "sender": {
+                        "name": "Ledger App",
+                        "email": app.config['MAIL_DEFAULT_SENDER']
+                    },
+                    "to": [
+                        {
+                            "email": recipient
+                        }
+                    ],
                     "subject": "Ledger - Password Reset Request",
-                    "html": f"<p>Hello {user.username},</p><p>To reset your Ledger password, visit the following link:</p><p><a href='{reset_url}'>{reset_url}</a></p><p>If you did not request this, please ignore this email.</p>"
+                    "htmlContent": f"<p>Hello {user.username},</p><p>To reset your Ledger password, visit the following link:</p><p><a href='{reset_url}'>{reset_url}</a></p><p>If you did not request this, please ignore this email.</p>"
                 }).encode('utf-8')
                 
                 urllib.request.urlopen(req, data=data, timeout=10)
                 flash('An email with instructions to reset your password has been sent.', 'success')
             except urllib.error.HTTPError as e:
                 error_body = e.read().decode('utf-8')
-                print(f"Resend API HTTP Error: {e.code} - {error_body}")
+                print(f"Brevo API HTTP Error: {e.code} - {error_body}")
                 
                 try:
-                    resend_err = json.loads(error_body)
-                    error_message = resend_err.get('message', 'Unknown Resend Error')
+                    brevo_err = json.loads(error_body)
+                    error_message = brevo_err.get('message', 'Unknown Brevo Error')
                 except:
                     error_message = error_body
                     
-                flash(f'Resend API Rejected the email: {error_message}', 'error')
+                flash(f'Brevo API Rejected the email: {error_message}', 'error')
             except Exception as e:
                 # Fallback if API fails (network error, etc)
-                print(f"Failed to send email via Resend API: {e}")
-                flash('Failed to connect to Resend API. Check Vercel logs.', 'error')
+                print(f"Failed to send email via Brevo API: {e}")
+                flash('Failed to connect to Brevo API. Check Vercel logs.', 'error')
                 
         else:
             flash(f'No account found with the username "{username}". Please check the spelling and try again.', 'error')
