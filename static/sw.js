@@ -17,6 +17,11 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Bypass service worker for non-GET requests (like POSTing a login form)
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   // Simple network-first strategy for dynamic content
   event.respondWith(
     fetch(event.request).catch(() => {
