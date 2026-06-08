@@ -255,7 +255,13 @@
         </tr>
         {% endif %}
         
-        {% set net_subtotal = invoice.subtotal - invoice.commission_amt - charges_total %}
+        {% set total_deductions = invoice.commission_amt + charges_total %}
+        <tr>
+            <th style="text-transform: uppercase;">Total Deductions</th>
+            <td class="text-right text-red-600">- Rs. {{ "%.2f"|format(total_deductions) }}</td>
+        </tr>
+        
+        {% set net_subtotal = invoice.subtotal - total_deductions %}
         <tr>
             <th>Net Subtotal</th>
             <td class="text-right">Rs. {{ "%.2f"|format(net_subtotal) }}</td>

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const commissionAmtEl = document.getElementById('commission_amt');
     
     const chargesTotalAmtEl = document.getElementById('charges_total_amt');
+    const totalDeductionsEl = document.getElementById('total_deductions');
     const netSubtotalEl = document.getElementById('net_subtotal');
     
     const taxEnabledEl = document.getElementById('tax_enabled');
@@ -362,7 +363,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (chargesTotalAmtEl) chargesTotalAmtEl.value = chargesTotal.toFixed(2);
         
         // Net Subtotal = Gross Subtotal - Commission - Charges
-        const netSubtotal = subtotal - commissionAmt - chargesTotal;
+        const totalDeductions = commissionAmt + chargesTotal;
+        if (totalDeductionsEl) totalDeductionsEl.value = totalDeductions.toFixed(2);
+        
+        const netSubtotal = subtotal - totalDeductions;
         if (netSubtotalEl) netSubtotalEl.value = netSubtotal.toFixed(2);
         
         // Calculate Tax (Applied to Net Subtotal)
