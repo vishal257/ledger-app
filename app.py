@@ -10,6 +10,7 @@ from markupsafe import Markup
 from flask_mail import Mail, Message
 
 from models import db, User, Invoice, InvoiceItem
+from sqlalchemy.pool import NullPool
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
@@ -17,6 +18,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'poolclass': NullPool
+}
 
 # Production Security Headers
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') != 'development' # Secure in prod
