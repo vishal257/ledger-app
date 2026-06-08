@@ -29,7 +29,7 @@ with app.app_context():
     ]
     for col in columns:
         try:
-            db.session.execute(text(f'ALTER TABLE user ADD COLUMN {col}'))
+            db.session.execute(text(f'ALTER TABLE "user" ADD COLUMN {col}'))
             db.session.commit()
         except Exception:
             db.session.rollback()
@@ -47,6 +47,19 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
+
+@app.route('/sw.js')
+def sw():
+    response = make_response(app.send_static_file('sw.js'))
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+@app.route('/manifest.json')
+def manifest():
+    response = make_response(app.send_static_file('manifest.json'))
+    response.headers['Content-Type'] = 'application/json'
+    return response
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
