@@ -118,7 +118,13 @@
                 <tr>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No.</th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <span class="tip-wrap">
+                            Client / Company
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Client / Party</strong><br>Click any client name to view their full ledger account, debits, credits, running balance, and all matching invoices.</span>
+                        </span>
+                    </th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -133,7 +139,24 @@
                     data-url="{{ url_for('view_invoice', invoice_id=invoice.id) }}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ invoice.invoice_no }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ invoice.invoice_date.strftime('%Y-%m-%d') }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ invoice.client_name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {% set client_key = invoice.client_name|lower|trim %}
+                        {% if account_map and client_key in account_map %}
+                        <a href="{{ url_for('ledger_account_detail', account_id=account_map[client_key]) }}" 
+                           class="text-indigo-600 hover:text-indigo-900 font-medium hover:underline inline-flex items-center" 
+                           title="Click to view {{ invoice.client_name }}'s full ledger account & invoices">
+                            {{ invoice.client_name }}
+                            <svg class="w-3.5 h-3.5 ml-1 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('ledger_new_account', name=invoice.client_name) if invoice.client_name else url_for('ledger_list') }}" 
+                           class="text-gray-700 hover:text-indigo-600 inline-flex items-center" 
+                           title="No ledger account yet — click to create account for {{ invoice.client_name }}">
+                            {{ invoice.client_name }}
+                            <span class="ml-1 text-xs text-indigo-500 font-normal underline">(Create Account)</span>
+                        </a>
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">₹{{ "%.2f"|format(invoice.total) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <a href="{{ url_for('view_invoice', invoice_id=invoice.id) }}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded-md mr-2">Preview</a>

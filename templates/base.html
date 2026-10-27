@@ -15,6 +15,94 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
+        /* Tooltip Trigger Styles */
+        .tip-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .tip-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 15px;
+            height: 15px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #4f46e5;
+            background-color: #eef2ff;
+            cursor: pointer;
+            user-select: none;
+            margin-left: 4px;
+            line-height: 1;
+            transition: all 0.15s ease;
+            vertical-align: middle;
+            border: 1px solid #c7d2fe;
+            flex-shrink: 0;
+        }
+        .tip-btn:hover, .tip-btn:focus {
+            background-color: #4f46e5;
+            color: #ffffff;
+            border-color: #4338ca;
+            outline: none;
+        }
+        /* Hide in-DOM tip-card so it never gets clipped by table overflow-x containers */
+        .tip-card {
+            display: none !important;
+        }
+        
+        /* Global Floating Tooltip (renders at body level, immune to overflow/clipping) */
+        #global-tooltip {
+            position: fixed;
+            z-index: 99999;
+            pointer-events: auto;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            left: 0;
+            top: 0;
+        }
+        #global-tooltip.active {
+            display: block !important;
+            opacity: 1 !important;
+        }
+        #global-tooltip-inner {
+            background-color: #111827;
+            color: #f9fafb;
+            padding: 9px 13px;
+            border-radius: 7px;
+            font-size: 11px;
+            font-weight: 400;
+            line-height: 16px;
+            max-width: 290px;
+            min-width: 180px;
+            width: max-content;
+            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+            border: 1px solid #374151;
+            text-align: left;
+            white-space: normal;
+        }
+        #global-tooltip-inner strong {
+            color: #93c5fd;
+            font-weight: 600;
+        }
+        #global-tooltip-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        #global-tooltip.pos-top #global-tooltip-arrow {
+            bottom: -5px;
+            border-width: 5px 5px 0 5px;
+            border-color: #111827 transparent transparent transparent;
+        }
+        #global-tooltip.pos-bottom #global-tooltip-arrow {
+            top: -5px;
+            border-width: 0 5px 5px 5px;
+            border-color: transparent transparent #111827 transparent;
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -34,6 +122,7 @@
                     {% if current_user.is_authenticated %}
                         <span class="text-indigo-200 text-sm">Welcome, {{ current_user.username | title }}</span>
                         <a href="{{ url_for('dashboard') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Dashboard</a>
+                        <a href="{{ url_for('ledger_list') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Ledger</a>
                         <a href="{{ url_for('new_invoice') }}" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-500 hover:bg-indigo-400 transition">New Invoice</a>
                         <a href="{{ url_for('settings') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Settings</a>
                         <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 transition">Logout</a>
@@ -60,6 +149,7 @@
                 {% if current_user.is_authenticated %}
                     <div class="px-3 py-2 text-base font-medium text-indigo-200 border-b border-indigo-500 mb-2">Welcome, {{ current_user.username | title }}</div>
                     <a href="{{ url_for('dashboard') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition">Dashboard</a>
+                    <a href="{{ url_for('ledger_list') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition">Ledger</a>
                     <a href="{{ url_for('new_invoice') }}" class="block px-3 py-2 rounded-md text-base font-medium bg-indigo-500 hover:bg-indigo-400 transition">New Invoice</a>
                     <a href="{{ url_for('settings') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition mt-4">Settings</a>
                     <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded-md text-base font-medium hover:bg-indigo-500 transition mt-2">Logout</a>
@@ -108,6 +198,12 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
+    </div>
+
+    <!-- Global Floating Tooltip Container (Portal at body level, immune to overflow-x clipping) -->
+    <div id="global-tooltip" role="tooltip" aria-hidden="true">
+        <div id="global-tooltip-inner"></div>
+        <div id="global-tooltip-arrow"></div>
     </div>
 
     <script>
@@ -194,6 +290,204 @@
             setTimeout(() => installBanner.classList.add('hidden'), 300);
             localStorage.setItem('pwaPromptDismissed', 'true');
         });
+
+        // Global Floating Tooltip Engine
+        (function() {
+            let tipEl = null;
+            let tipInner = null;
+            let tipArrow = null;
+            let hideTimer = null;
+            let currentTrigger = null;
+
+            function initElements() {
+                if (!tipEl) {
+                    tipEl = document.getElementById('global-tooltip');
+                    if (!tipEl) {
+                        tipEl = document.createElement('div');
+                        tipEl.id = 'global-tooltip';
+                        tipEl.setAttribute('role', 'tooltip');
+                        tipEl.setAttribute('aria-hidden', 'true');
+                        tipEl.innerHTML = '<div id="global-tooltip-inner"></div><div id="global-tooltip-arrow"></div>';
+                        document.body.appendChild(tipEl);
+                    }
+                    tipInner = document.getElementById('global-tooltip-inner') || tipEl.querySelector('#global-tooltip-inner');
+                    tipArrow = document.getElementById('global-tooltip-arrow') || tipEl.querySelector('#global-tooltip-arrow');
+                }
+                return tipEl && tipInner && tipArrow;
+            }
+
+            function positionTooltip(trigger) {
+                if (!initElements()) return;
+
+                const wrap = trigger.closest('.tip-wrap') || trigger;
+                const card = wrap.querySelector ? wrap.querySelector('.tip-card') : null;
+                let html = '';
+                if (card) {
+                    html = card.innerHTML;
+                } else if (trigger.getAttribute('data-tooltip')) {
+                    html = trigger.getAttribute('data-tooltip');
+                } else if (trigger.getAttribute('title')) {
+                    html = trigger.getAttribute('title');
+                    trigger.setAttribute('data-original-title', html);
+                    trigger.removeAttribute('title');
+                }
+
+                if (!html || !html.trim()) return;
+
+                tipInner.innerHTML = html;
+                tipEl.className = '';
+                tipEl.style.display = 'block';
+                tipEl.style.left = '-9999px';
+                tipEl.style.top = '-9999px';
+                tipEl.classList.add('active');
+
+                // Determine precise anchor element (the (i) button inside wrap or the trigger itself)
+                const anchorEl = wrap.querySelector ? (wrap.querySelector('.tip-btn') || wrap) : trigger;
+                const anchorRect = anchorEl.getBoundingClientRect();
+                const tipRect = tipEl.getBoundingClientRect();
+
+                const margin = 8;
+                const pad = 12;
+                const viewW = window.innerWidth;
+
+                // Vertical positioning:
+                // Check if enough room on top
+                let top, posClass;
+                if (anchorRect.top - tipRect.height - margin < 12) {
+                    // Position below
+                    top = anchorRect.bottom + margin;
+                    posClass = 'pos-bottom';
+                } else {
+                    // Position above
+                    top = anchorRect.top - tipRect.height - margin;
+                    posClass = 'pos-top';
+                }
+
+                // Horizontal positioning:
+                // Center relative to anchor element
+                const anchorCenter = anchorRect.left + (anchorRect.width / 2);
+                let left = anchorCenter - (tipRect.width / 2);
+
+                // Clamp inside viewport
+                left = Math.max(pad, Math.min(left, viewW - tipRect.width - pad));
+
+                // Arrow position
+                let arrowLeft = anchorCenter - left;
+                arrowLeft = Math.max(10, Math.min(arrowLeft, tipRect.width - 10));
+
+                tipEl.style.top = Math.round(top) + 'px';
+                tipEl.style.left = Math.round(left) + 'px';
+                tipArrow.style.left = Math.round(arrowLeft - 5) + 'px';
+
+                tipEl.classList.add(posClass);
+                currentTrigger = trigger;
+            }
+
+            function show(trigger) {
+                if (hideTimer) {
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+                positionTooltip(trigger);
+            }
+
+            function hide(immediate) {
+                if (hideTimer) {
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+                const executeHide = function() {
+                    if (tipEl) {
+                        tipEl.classList.remove('active', 'pos-top', 'pos-bottom');
+                        tipEl.style.display = 'none';
+                    }
+                    currentTrigger = null;
+                };
+
+                if (immediate) {
+                    executeHide();
+                } else {
+                    hideTimer = setTimeout(executeHide, 120);
+                }
+            }
+
+            function attachListeners() {
+                document.querySelectorAll('.tip-wrap, .tip-btn, [data-tooltip]').forEach(function(el) {
+                    if (el._tipAttached) return;
+                    el._tipAttached = true;
+
+                    el.addEventListener('mouseenter', function() { show(el); });
+                    el.addEventListener('mouseleave', function(e) {
+                        if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+                        hide(false);
+                    });
+                    el.addEventListener('focus', function() { show(el); });
+                    el.addEventListener('blur', function(e) {
+                        if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+                        hide(false);
+                    });
+                });
+
+                if (tipEl && !tipEl._hoverAttached) {
+                    tipEl._hoverAttached = true;
+                    tipEl.addEventListener('mouseenter', function() {
+                        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+                    });
+                    tipEl.addEventListener('mouseleave', function() {
+                        hide(false);
+                    });
+                }
+            }
+
+            // Delegated backup for dynamic elements
+            document.addEventListener('mouseover', function(e) {
+                const trigger = e.target.closest('.tip-wrap, .tip-btn, [data-tooltip]');
+                if (trigger) {
+                    show(trigger);
+                }
+            });
+
+            document.addEventListener('mouseout', function(e) {
+                const trigger = e.target.closest('.tip-wrap, .tip-btn, [data-tooltip]');
+                if (trigger) {
+                    if (e.relatedTarget && (trigger.contains(e.relatedTarget) || (tipEl && tipEl.contains(e.relatedTarget)))) {
+                        return;
+                    }
+                    hide(false);
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                const trigger = e.target.closest('.tip-wrap, .tip-btn, [data-tooltip]');
+                if (trigger) {
+                    e.stopPropagation();
+                    show(trigger);
+                } else if (!tipEl || !tipEl.contains(e.target)) {
+                    hide(true);
+                }
+            });
+
+            window.addEventListener('scroll', function() {
+                if (currentTrigger) {
+                    positionTooltip(currentTrigger);
+                }
+            }, { passive: true });
+
+            window.addEventListener('resize', function() {
+                if (currentTrigger) {
+                    positionTooltip(currentTrigger);
+                }
+            }, { passive: true });
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', attachListeners);
+            } else {
+                attachListeners();
+            }
+            // Also run attachListeners after small delays to catch any dynamic renders
+            setTimeout(attachListeners, 300);
+            setTimeout(attachListeners, 1000);
+        })();
     </script>
 </body>
 </html>

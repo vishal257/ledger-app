@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, flash, request, make_response, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, request, make_response, jsonify, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from xhtml2pdf import pisa
@@ -11,7 +11,7 @@ import json
 import urllib.request
 import urllib.error
 
-from models import db, User, Invoice, InvoiceItem, AdditionalCharge
+from models import db, User, Invoice, InvoiceItem, AdditionalCharge, LedgerAccount, LedgerEntry
 from sqlalchemy.pool import NullPool
 
 app = Flask(__name__)
@@ -138,6 +138,7 @@ def register():
 @app.route('/logout')
 @login_required
 def logout():
+    session.pop('ledger_unlocked', None)
     logout_user()
     return redirect(url_for('login'))
 
@@ -304,7 +305,9 @@ def settings():
 @login_required
 def dashboard():
     invoices = Invoice.query.filter_by(user_id=current_user.id).order_by(Invoice.created_at.desc()).all()
-    return render_template('dashboard.html', invoices=invoices)
+    accounts = LedgerAccount.query.filter_by(user_id=current_user.id).all()
+    account_map = {acc.account_name.strip().lower(): acc.id for acc in accounts}
+    return render_template('dashboard.html', invoices=invoices, account_map=account_map)
 
 @app.route('/api/dashboard/stats')
 @login_required
@@ -353,7 +356,7 @@ def dashboard_stats():
 def new_invoice():
     if request.method == 'POST':
         # Retrieve form data
-        client_name = request.form.get('client_name') or ""
+        client_name = (request.form.get('client_name') or "").strip()
         contact_name = request.form.get('contact_name') or ""
         address_1 = request.form.get('address_1') or ""
         address_2 = request.form.get('address_2') or ""
@@ -462,7 +465,13 @@ def view_invoice(invoice_id):
     invoice = Invoice.query.get_or_404(invoice_id)
     if invoice.user_id != current_user.id:
         return "Unauthorized", 403
-    return render_template('invoice_preview.html', invoice=invoice)
+    account = None
+    if invoice.client_name:
+        account = LedgerAccount.query.filter(
+            LedgerAccount.user_id == current_user.id,
+            db.func.lower(LedgerAccount.account_name) == invoice.client_name.strip().lower()
+        ).first()
+    return render_template('invoice_preview.html', invoice=invoice, account=account)
 
 @app.route('/invoice/<int:invoice_id>/pdf')
 @login_required
@@ -501,11 +510,422 @@ def delete_invoice(invoice_id):
         
     for item in invoice.items:
         db.session.delete(item)
+
+    # Detach linked ledger entries so they remain in accounting records with invoice reference detached
+    for entry in invoice.ledger_entries:
+        entry.invoice_id = None
         
     db.session.delete(invoice)
     db.session.commit()
     flash(f'Invoice {invoice.invoice_no} deleted successfully.', 'success')    
     return redirect(url_for('dashboard'))
+
+# ==================== LEDGER ROUTES ====================
+
+@app.route('/ledger/unlock', methods=['POST'])
+@login_required
+def ledger_unlock():
+    """Verify password to unlock ledger for editing."""
+    password = request.form.get('password')
+    redirect_url = request.form.get('redirect_url') or url_for('ledger_list')
+    if password and check_password_hash(current_user.password_hash, password):
+        session['ledger_unlocked'] = True
+        flash('Ledger unlocked for editing. You can now add, edit, and delete entries.', 'success')
+    else:
+        flash('Incorrect password. Ledger remains locked.', 'error')
+    return redirect(redirect_url)
+
+@app.route('/ledger/lock', methods=['POST'])
+@login_required
+def ledger_lock():
+    """Lock the ledger to prevent accidental edits."""
+    session.pop('ledger_unlocked', None)
+    flash('Ledger locked. Enter your password to make changes.', 'success')
+    redirect_url = request.form.get('redirect_url') or url_for('ledger_list')
+    return redirect(redirect_url)
+
+@app.route('/ledger')
+@login_required
+def ledger_list():
+    """Main ledger page - lists all accounts with summary."""
+    accounts = LedgerAccount.query.filter_by(user_id=current_user.id).order_by(LedgerAccount.account_name.asc()).all()
+    
+    # Calculate totals across all accounts
+    grand_total_debit = sum(a.total_debit for a in accounts)
+    grand_total_credit = sum(a.total_credit for a in accounts)
+    
+    is_unlocked = session.get('ledger_unlocked', False)
+    
+    return render_template('ledger_list.html', 
+                           accounts=accounts,
+                           grand_total_debit=grand_total_debit,
+                           grand_total_credit=grand_total_credit,
+                           is_unlocked=is_unlocked)
+
+@app.route('/ledger/account/new', methods=['GET', 'POST'])
+@login_required
+def ledger_new_account():
+    """Create a new ledger account (a new page in the book)."""
+    if request.method == 'POST':
+        account_name = request.form.get('account_name', '').strip()
+        gst_no = request.form.get('gst_no', '').strip()
+        phone = request.form.get('phone', '').strip()
+        address = request.form.get('address', '').strip()
+        
+        try:
+            opening_balance = float(request.form.get('opening_balance', 0.0) or 0.0)
+            if opening_balance < 0:
+                flash('Initial opening balance cannot be negative. Choose Dr or Cr for direction.', 'error')
+                return render_template('ledger_account_form.html', account=None, prefill_name=account_name)
+        except (ValueError, TypeError):
+            flash('Invalid opening balance amount.', 'error')
+            return render_template('ledger_account_form.html', account=None, prefill_name=account_name)
+
+        opening_balance_type = request.form.get('opening_balance_type', 'Dr')
+        if opening_balance_type not in ['Dr', 'Cr']:
+            opening_balance_type = 'Dr'
+        
+        if not account_name:
+            flash('Account name is required.', 'error')
+            return render_template('ledger_account_form.html', account=None, prefill_name='')
+        
+        # Check for duplicate account name for this user (case-insensitive)
+        existing = LedgerAccount.query.filter(
+            LedgerAccount.user_id == current_user.id, 
+            db.func.lower(LedgerAccount.account_name) == account_name.lower()
+        ).first()
+        if existing:
+            flash(f'An account with the name "{account_name}" already exists.', 'error')
+            return render_template('ledger_account_form.html', account=None, prefill_name=account_name)
+        
+        account = LedgerAccount(
+            user_id=current_user.id,
+            account_name=account_name,
+            gst_no=gst_no,
+            phone=phone,
+            address=address,
+            opening_balance=opening_balance,
+            opening_balance_type=opening_balance_type
+        )
+        db.session.add(account)
+        db.session.commit()
+        flash(f'Account "{account_name}" created successfully.', 'success')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+    
+    prefill_name = request.args.get('name', '').strip()
+    return render_template('ledger_account_form.html', account=None, prefill_name=prefill_name)
+
+@app.route('/ledger/account/<int:account_id>')
+@login_required
+def ledger_account_detail(account_id):
+    """View a single ledger account with all entries and running balance."""
+    account = LedgerAccount.query.get_or_404(account_id)
+    if account.user_id != current_user.id:
+        return "Unauthorized", 403
+    
+    # Compute running balance for each entry
+    running_balance = account.opening_balance if account.opening_balance_type == 'Dr' else -account.opening_balance
+    entries_with_balance = []
+    
+    # Always include Opening Balance as line 1 so user can view and edit initial amount anytime
+    entries_with_balance.append({
+        'id': None,
+        'date': account.created_at.strftime('%Y-%m-%d') if account.created_at else '',
+        'particulars': 'Opening Balance (Initial Amount)',
+        'folio': '—',
+        'debit': account.opening_balance if account.opening_balance_type == 'Dr' and account.opening_balance > 0 else 0,
+        'credit': account.opening_balance if account.opening_balance_type == 'Cr' and account.opening_balance > 0 else 0,
+        'balance_amt': abs(running_balance),
+        'balance_type': 'Dr' if running_balance >= 0 else 'Cr',
+        'is_opening': True,
+        'invoice_id': None
+    })
+    
+    for entry in account.entries:
+        running_balance += (entry.debit or 0.0) - (entry.credit or 0.0)
+        entries_with_balance.append({
+            'id': entry.id,
+            'date': entry.date.strftime('%Y-%m-%d') if entry.date else '',
+            'particulars': entry.particulars,
+            'folio': entry.folio or '',
+            'debit': entry.debit or 0,
+            'credit': entry.credit or 0,
+            'balance_amt': abs(running_balance),
+            'balance_type': 'Dr' if running_balance >= 0 else 'Cr',
+            'is_opening': False,
+            'invoice_id': entry.invoice_id
+        })
+    
+    # Find matching invoices by client name (case-insensitive)
+    related_invoices = Invoice.query.filter_by(user_id=current_user.id).filter(
+        db.func.lower(Invoice.client_name) == account.account_name.strip().lower()
+    ).order_by(Invoice.invoice_date.desc()).all()
+    
+    is_unlocked = session.get('ledger_unlocked', False)
+    
+    return render_template('ledger_account_detail.html', 
+                           account=account, 
+                           entries=entries_with_balance,
+                           related_invoices=related_invoices,
+                           is_unlocked=is_unlocked)
+
+@app.route('/ledger/account/<int:account_id>/edit', methods=['GET', 'POST'])
+@login_required
+def ledger_edit_account(account_id):
+    """Edit an existing ledger account's details."""
+    account = LedgerAccount.query.get_or_404(account_id)
+    if account.user_id != current_user.id:
+        return "Unauthorized", 403
+
+    is_unlocked = session.get('ledger_unlocked', False)
+
+    if request.method == 'POST':
+        # If ledger is locked, require password verification from the submitted form
+        if not is_unlocked:
+            password = request.form.get('password')
+            if not password or not check_password_hash(current_user.password_hash, password):
+                flash('Incorrect password. Authorization failed.', 'error')
+                return render_template('ledger_account_form.html', account=account, is_unlocked=False)
+            session['ledger_unlocked'] = True
+            is_unlocked = True
+
+        new_name = request.form.get('account_name', '').strip()
+        if not new_name:
+            flash('Account name cannot be empty.', 'error')
+            return render_template('ledger_account_form.html', account=account, is_unlocked=is_unlocked)
+
+        # Check for duplicate account name for this user (excluding current account)
+        existing = LedgerAccount.query.filter(
+            LedgerAccount.user_id == current_user.id,
+            LedgerAccount.id != account.id,
+            db.func.lower(LedgerAccount.account_name) == new_name.lower()
+        ).first()
+        if existing:
+            flash(f'An account named "{new_name}" already exists.', 'error')
+            return render_template('ledger_account_form.html', account=account, is_unlocked=is_unlocked)
+
+        try:
+            opening_bal = float(request.form.get('opening_balance', 0.0) or 0.0)
+            if opening_bal < 0:
+                flash('Opening balance amount cannot be negative.', 'error')
+                return render_template('ledger_account_form.html', account=account, is_unlocked=is_unlocked)
+            account.opening_balance = opening_bal
+        except (ValueError, TypeError):
+            flash('Invalid opening balance amount.', 'error')
+            return render_template('ledger_account_form.html', account=account, is_unlocked=is_unlocked)
+
+        bal_type = request.form.get('opening_balance_type', 'Dr')
+        if bal_type in ['Dr', 'Cr']:
+            account.opening_balance_type = bal_type
+
+        account.account_name = new_name
+        account.gst_no = request.form.get('gst_no', '').strip()
+        account.phone = request.form.get('phone', '').strip()
+        account.address = request.form.get('address', '').strip()
+
+        db.session.commit()
+        flash('Account details updated successfully.', 'success')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+    return render_template('ledger_account_form.html', account=account, is_unlocked=is_unlocked)
+
+@app.route('/ledger/account/<int:account_id>/opening-balance', methods=['POST'])
+@login_required
+def ledger_edit_opening_balance(account_id):
+    """Edit just the opening balance of a ledger account."""
+    if not session.get('ledger_unlocked'):
+        password = request.form.get('password')
+        if password and check_password_hash(current_user.password_hash, password):
+            session['ledger_unlocked'] = True
+        else:
+            flash('Please unlock the ledger first by entering your password.', 'error')
+            return redirect(url_for('ledger_account_detail', account_id=account_id))
+    
+    account = LedgerAccount.query.get_or_404(account_id)
+    if account.user_id != current_user.id:
+        return "Unauthorized", 403
+    
+    try:
+        opening_bal = float(request.form.get('opening_balance', 0.0) or 0.0)
+        if opening_bal < 0:
+            flash('Opening balance cannot be negative. Select Cr or Dr for balance direction.', 'error')
+            return redirect(url_for('ledger_account_detail', account_id=account.id))
+    except (ValueError, TypeError):
+        flash('Invalid opening balance amount.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+        
+    bal_type = request.form.get('opening_balance_type', 'Dr')
+    if bal_type not in ['Dr', 'Cr']:
+        bal_type = 'Dr'
+        
+    account.opening_balance = opening_bal
+    account.opening_balance_type = bal_type
+    db.session.commit()
+    flash(f'Initial balance updated to ₹{opening_bal:.2f} ({bal_type}).', 'success')
+    return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+@app.route('/ledger/account/<int:account_id>/entry/new', methods=['POST'])
+@login_required
+def ledger_add_entry(account_id):
+    """Add a new entry (row) to a ledger account."""
+    if not session.get('ledger_unlocked'):
+        flash('Please unlock the ledger first by entering your password.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+    
+    account = LedgerAccount.query.get_or_404(account_id)
+    if account.user_id != current_user.id:
+        return "Unauthorized", 403
+    
+    date_str = request.form.get('entry_date', '')
+    particulars = request.form.get('particulars', '').strip()
+    folio = request.form.get('folio', '').strip()
+    invoice_id_raw = request.form.get('invoice_id')
+    
+    if not date_str or not particulars:
+        flash('Date and Particulars are required.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+    
+    try:
+        entry_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        flash('Invalid date format. Please use YYYY-MM-DD.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+
+    try:
+        debit = float(request.form.get('debit', 0) or 0)
+        credit = float(request.form.get('credit', 0) or 0)
+    except (ValueError, TypeError):
+        flash('Invalid debit or credit amount. Must be numeric.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+
+    if debit < 0 or credit < 0:
+        flash('Debit and credit amounts cannot be negative.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+
+    if debit > 0 and credit > 0:
+        flash('An entry cannot have both Debit and Credit amounts simultaneously. Please record them as separate entries.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+    
+    if debit == 0 and credit == 0:
+        flash('Either Debit or Credit amount must be provided.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+
+    invoice_id = None
+    if invoice_id_raw:
+        try:
+            inv = Invoice.query.filter_by(id=int(invoice_id_raw), user_id=current_user.id).first()
+            if inv:
+                invoice_id = inv.id
+        except (ValueError, TypeError):
+            invoice_id = None
+    
+    entry = LedgerEntry(
+        account_id=account.id,
+        date=entry_date,
+        particulars=particulars,
+        folio=folio,
+        debit=debit,
+        credit=credit,
+        invoice_id=invoice_id
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash('Entry added successfully.', 'success')
+    return redirect(url_for('ledger_account_detail', account_id=account_id))
+
+@app.route('/ledger/entry/<int:entry_id>/edit', methods=['POST'])
+@login_required
+def ledger_edit_entry(entry_id):
+    """Edit an existing ledger entry."""
+    entry = LedgerEntry.query.get_or_404(entry_id)
+    account = entry.account
+    if account.user_id != current_user.id:
+        return "Unauthorized", 403
+    
+    if not session.get('ledger_unlocked'):
+        flash('Please unlock the ledger first by entering your password.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+    
+    date_str = request.form.get('entry_date', '')
+    particulars = request.form.get('particulars', '').strip()
+    folio = request.form.get('folio', '').strip()
+    
+    try:
+        debit = float(request.form.get('debit', 0) or 0)
+        credit = float(request.form.get('credit', 0) or 0)
+    except (ValueError, TypeError):
+        flash('Invalid debit or credit amount. Must be numeric.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+    if debit < 0 or credit < 0:
+        flash('Debit and credit amounts cannot be negative.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+    if debit > 0 and credit > 0:
+        flash('An entry cannot have both Debit and Credit amounts simultaneously.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+    if debit == 0 and credit == 0:
+        flash('Either Debit or Credit amount must be provided.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+    if particulars:
+        entry.particulars = particulars
+    entry.folio = folio
+    entry.debit = debit
+    entry.credit = credit
+    
+    if date_str:
+        try:
+            entry.date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            flash('Invalid date format.', 'error')
+            return redirect(url_for('ledger_account_detail', account_id=account.id))
+    
+    db.session.commit()
+    flash('Entry updated successfully.', 'success')
+    return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+@app.route('/ledger/entry/<int:entry_id>/delete', methods=['POST'])
+@login_required
+def ledger_delete_entry(entry_id):
+    """Delete a single ledger entry."""
+    entry = LedgerEntry.query.get_or_404(entry_id)
+    account = entry.account
+    if account.user_id != current_user.id:
+        return "Unauthorized", 403
+    
+    if not session.get('ledger_unlocked'):
+        flash('Please unlock the ledger first by entering your password.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account.id))
+    
+    db.session.delete(entry)
+    db.session.commit()
+    flash('Entry deleted.', 'success')
+    return redirect(url_for('ledger_account_detail', account_id=account.id))
+
+@app.route('/ledger/account/<int:account_id>/delete', methods=['POST'])
+@login_required
+def ledger_delete_account(account_id):
+    """Delete an entire ledger account and all its entries."""
+    if not session.get('ledger_unlocked'):
+        flash('Please unlock the ledger first by entering your password.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+    
+    account = LedgerAccount.query.get_or_404(account_id)
+    if account.user_id != current_user.id:
+        return "Unauthorized", 403
+    
+    password = request.form.get('password')
+    if not password or not check_password_hash(current_user.password_hash, password):
+        flash('Incorrect password. Account deletion failed.', 'error')
+        return redirect(url_for('ledger_account_detail', account_id=account_id))
+    
+    name = account.account_name
+    db.session.delete(account)
+    db.session.commit()
+    flash(f'Account "{name}" and all its entries deleted successfully.', 'success')
+    return redirect(url_for('ledger_list'))
 
 # Global Error Handlers
 @app.errorhandler(404)

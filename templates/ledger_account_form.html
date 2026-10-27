@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mb-8">
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+            <div class="flex items-center">
+                <a href="{{ url_for('ledger_list') }}" class="mr-3 text-gray-400 hover:text-gray-600 transition" title="Back to Ledger Book">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </a>
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                        <span>{% if account %}Edit Account — {{ account.account_name }}{% else %}Create New Ledger Account{% endif %}</span>
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Ledger Account</strong><br>Represents a customer, vendor, or supplier in your ledger book. Each account has its own debits, credits, and running balance.</span>
+                        </span>
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        {% if account %}Update account details and initial opening balance.{% else %}Each account represents a party or company in your ledger book.{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <form method="POST" action="{% if account %}{{ url_for('ledger_edit_account', account_id=account.id) }}{% else %}{{ url_for('ledger_new_account') }}{% endif %}">
+            <div class="px-6 py-6 space-y-6">
+                <!-- Account Name -->
+                <div>
+                    <label for="account_name" class="block text-sm font-medium text-gray-700 flex items-center">
+                        <span>Account Name / Company Name <span class="text-red-500">*</span></span>
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Account Name</strong><br>Full business or individual name of the party (e.g. Sharma Timber Traders). Invoices matching this name will be linked automatically.</span>
+                        </span>
+                    </label>
+                    <input type="text" name="account_name" id="account_name" required
+                           value="{{ account.account_name if account else (prefill_name or '') }}"
+                           class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                           placeholder="e.g. Sharma Timber Traders">
+                </div>
+
+                <!-- GST No -->
+                <div>
+                    <label for="gst_no" class="block text-sm font-medium text-gray-700 flex items-center">
+                        <span>GST No.</span>
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>GST Number</strong><br>15-digit Goods and Services Tax Identification Number for the party.</span>
+                        </span>
+                    </label>
+                    <input type="text" name="gst_no" id="gst_no"
+                           value="{{ account.gst_no if account else '' }}"
+                           class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border uppercase"
+                           placeholder="e.g. 22AAAAA0000A1Z5">
+                </div>
+
+                <!-- Phone and Address side by side -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span>Phone / Tele</span>
+                            <span class="tip-wrap">
+                                <span class="tip-btn" tabindex="0">i</span>
+                                <span class="tip-card tip-right"><strong>Contact Number</strong><br>Mobile or office phone number for easy contact.</span>
+                            </span>
+                        </label>
+                        <input type="text" name="phone" id="phone"
+                               value="{{ account.phone if account else '' }}"
+                               class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                               placeholder="e.g. +91 98765 43210">
+                    </div>
+                    <div>
+                        <label for="address" class="block text-sm font-medium text-gray-700 flex items-center">
+                            <span>Address</span>
+                            <span class="tip-wrap">
+                                <span class="tip-btn" tabindex="0">i</span>
+                                <span class="tip-card tip-left"><strong>Billing Address</strong><br>Office, factory, or delivery address for this party.</span>
+                            </span>
+                        </label>
+                        <input type="text" name="address" id="address"
+                               value="{{ account.address if account else '' }}"
+                               class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                               placeholder="e.g. 123 Market Road, Delhi">
+                    </div>
+                </div>
+
+                <!-- Opening Balance -->
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                        <span>Opening Balance (Initial Amount)</span>
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Opening Balance</strong><br>The starting balance brought forward before using this system. If they already owe you money, choose Debit (Dr). If you owe them or they paid an advance, choose Credit (Cr).</span>
+                        </span>
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="opening_balance" class="block text-sm font-medium text-gray-600 flex items-center">
+                                <span>Amount (₹)</span>
+                                <span class="tip-wrap">
+                                    <span class="tip-btn" tabindex="0">i</span>
+                                    <span class="tip-card tip-right"><strong>Initial Amount</strong><br>Leave as 0.00 if this is a brand new account with no previous dues.</span>
+                                </span>
+                            </label>
+                            <input type="number" name="opening_balance" id="opening_balance" step="0.01" min="0"
+                                   value="{{ account.opening_balance if account else '0' }}"
+                                   class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border bg-white"
+                                   placeholder="0.00">
+                        </div>
+                        <div>
+                            <label for="opening_balance_type" class="block text-sm font-medium text-gray-600 flex items-center">
+                                <span>Balance Type</span>
+                                <span class="tip-wrap">
+                                    <span class="tip-btn" tabindex="0">i</span>
+                                    <span class="tip-card tip-left"><strong>Debit vs Credit</strong><br><strong>Debit (Dr):</strong> Party owes you money (Receivable).<br><strong>Credit (Cr):</strong> You owe party money (Payable/Advance).</span>
+                                </span>
+                            </label>
+                            <select name="opening_balance_type" id="opening_balance_type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm border bg-white">
+                                <option value="Dr" {% if account and account.opening_balance_type == 'Dr' %}selected{% endif %}>Debit (Dr) — They owe you</option>
+                                <option value="Cr" {% if account and account.opening_balance_type == 'Cr' %}selected{% endif %}>Credit (Cr) — You owe them</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">Set to 0 if starting fresh. Otherwise, enter the carried-forward balance.</p>
+                </div>
+
+                <!-- Password gate if editing and locked -->
+                {% if account and not is_unlocked %}
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <label for="password" class="block text-sm font-semibold text-amber-900 mb-1 flex items-center">
+                        <span>Enter Password to Confirm Edit: <span class="text-red-500">*</span></span>
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Security Gate</strong><br>Entering your account password unlocks editing and saves the updated details.</span>
+                        </span>
+                    </label>
+                    <input type="password" name="password" id="password" required
+                           class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border bg-white"
+                           placeholder="Account Password">
+                    <p class="mt-1 text-xs text-amber-700">Password verification is required for modifying account data.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg border-t border-gray-200">
+                <a href="{{ url_for('ledger_account_detail', account_id=account.id) if account else url_for('ledger_list') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                    Cancel
+                </a>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                    {% if account %}Save Changes{% else %}Create Account{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

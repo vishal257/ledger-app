@@ -1,0 +1,769 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Account Header -->
+<div class="bg-white shadow rounded-lg mb-6">
+    <div class="px-4 py-5 sm:px-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="flex items-center">
+                <a href="{{ url_for('ledger_list') }}" class="mr-3 text-gray-400 hover:text-gray-600 transition" title="Back to Ledger Book">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </a>
+                <div class="flex-shrink-0 h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center mr-4">
+                    <span class="text-indigo-600 font-bold text-lg">{{ account.account_name[0]|upper }}</span>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center">
+                        <span>{{ account.account_name }}</span>
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Ledger Account</strong><br>Represents the account sheet for {{ account.account_name }}. All debit and credit transactions and balances for this party are tracked here.</span>
+                        </span>
+                    </h2>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+                        {% if account.gst_no %}
+                        <span class="flex items-center">
+                            <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            GST: {{ account.gst_no }}
+                            <span class="tip-wrap">
+                                <span class="tip-btn" tabindex="0">i</span>
+                                <span class="tip-card tip-right"><strong>GST No.</strong><br>Goods & Services Tax identification number for this company.</span>
+                            </span>
+                        </span>
+                        {% endif %}
+                        {% if account.phone %}
+                        <span class="flex items-center">
+                            <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                            {{ account.phone }}
+                        </span>
+                        {% endif %}
+                        {% if account.address %}
+                        <span class="flex items-center">
+                            <svg class="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            {{ account.address }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions & Lock Status -->
+            <div class="flex flex-wrap items-center gap-2">
+                {% if is_unlocked %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">
+                    <svg class="w-3.5 h-3.5 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                    Editing Unlocked
+                </span>
+                <form method="POST" action="{{ url_for('ledger_lock') }}" class="inline">
+                    <input type="hidden" name="redirect_url" value="{{ request.path }}">
+                    <button type="submit" class="text-xs text-red-600 hover:text-red-800 underline font-medium">Lock</button>
+                </form>
+                {% else %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                    <svg class="w-3.5 h-3.5 mr-1 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    Protected Mode
+                </span>
+                <button type="button" onclick="openUnlockModal()" class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition">
+                    Unlock to Edit
+                </button>
+                {% endif %}
+
+                <button type="button" onclick="openEditOpeningBalanceModal({{ account.opening_balance }}, '{{ account.opening_balance_type }}')" class="inline-flex items-center px-3 py-1.5 border border-indigo-200 shadow-sm text-xs font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition" title="Edit Initial Opening Balance">
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Edit Initial Amount
+                </button>
+
+                <button type="button" onclick="handleEditAccountClick()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition">
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    Edit Account
+                </button>
+
+                <button type="button" onclick="openDeleteAccountModal()" class="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 transition">
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Summary Bar -->
+    {% set bal_amt, bal_type = account.current_balance_display %}
+    <div class="px-6 py-4 bg-gray-50 border-t border-b border-gray-200 grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <!-- Initial Amount / Opening Balance -->
+        <div class="text-center sm:text-left">
+            <div class="flex items-center justify-center sm:justify-start">
+                <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Initial Amount</span>
+                <span class="tip-wrap">
+                    <span class="tip-btn" tabindex="0">i</span>
+                    <span class="tip-card tip-right"><strong>Initial Amount (Opening Balance)</strong><br>The starting balance brought forward when this account was created. Dr = They owed you; Cr = You owed them. Click 'Edit' to change.</span>
+                </span>
+                <button type="button" onclick="openEditOpeningBalanceModal({{ account.opening_balance }}, '{{ account.opening_balance_type }}')" class="ml-2 text-indigo-600 hover:text-indigo-800 text-xs font-semibold" title="Edit Initial Amount">
+                    (Edit)
+                </button>
+            </div>
+            <p class="text-lg font-bold text-gray-800 mt-0.5">
+                ₹{{ "%.2f"|format(account.opening_balance) }}
+                <span class="text-xs font-semibold px-1.5 py-0.5 rounded {% if account.opening_balance_type == 'Dr' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                    {{ account.opening_balance_type }}
+                </span>
+            </p>
+        </div>
+
+        <!-- Total Debit -->
+        <div class="text-center sm:text-left">
+            <div class="flex items-center justify-center sm:justify-start">
+                <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Debit</span>
+                <span class="tip-wrap">
+                    <span class="tip-btn" tabindex="0">i</span>
+                    <span class="tip-card tip-right"><strong>Total Debit (Dr)</strong><br>Total money owed to you by this party (including initial balance + sales / dues).</span>
+                </span>
+            </div>
+            <p class="text-lg font-bold text-green-700 mt-0.5">₹{{ "%.2f"|format(account.total_debit) }}</p>
+        </div>
+
+        <!-- Total Credit -->
+        <div class="text-center sm:text-left">
+            <div class="flex items-center justify-center sm:justify-start">
+                <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Credit</span>
+                <span class="tip-wrap">
+                    <span class="tip-btn" tabindex="0">i</span>
+                    <span class="tip-card tip-right"><strong>Total Credit (Cr)</strong><br>Total payments received from this party or advances paid by them.</span>
+                </span>
+            </div>
+            <p class="text-lg font-bold text-red-700 mt-0.5">₹{{ "%.2f"|format(account.total_credit) }}</p>
+        </div>
+
+        <!-- Current Balance -->
+        <div class="text-center sm:text-right">
+            <div class="flex items-center justify-center sm:justify-end">
+                <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Current Balance</span>
+                <span class="tip-wrap">
+                    <span class="tip-btn" tabindex="0">i</span>
+                    <span class="tip-card tip-left"><strong>Current Running Balance</strong><br>
+                    {% if bal_type == 'Settled' %}
+                    <strong>Settled:</strong> All accounts balanced and clear (₹0.00).
+                    {% elif bal_type == 'Dr' %}
+                    <strong>Dr (Debit):</strong> Party owes you ₹{{ "%.2f"|format(bal_amt) }} (Receivable).
+                    {% else %}
+                    <strong>Cr (Credit):</strong> You owe party ₹{{ "%.2f"|format(bal_amt) }} (Payable / Advance).
+                    {% endif %}
+                    </span>
+                </span>
+            </div>
+            <p class="text-lg font-bold mt-0.5">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold
+                    {% if bal_type == 'Dr' %}bg-green-100 text-green-800 border border-green-300
+                    {% elif bal_type == 'Cr' %}bg-red-100 text-red-800 border border-red-300
+                    {% else %}bg-gray-100 text-gray-700 border border-gray-300{% endif %}">
+                    {% if bal_type == 'Settled' %}
+                        ₹0.00 Settled
+                    {% else %}
+                        ₹{{ "%.2f"|format(bal_amt) }} {{ bal_type }}
+                    {% endif %}
+                </span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Ledger Table -->
+<div class="bg-white shadow rounded-lg mb-6">
+    <div class="px-4 py-4 border-b border-gray-200 sm:px-6 flex justify-between items-center">
+        <div>
+            <h3 class="text-md font-semibold text-gray-800 flex items-center">
+                <span>Ledger Entries</span>
+                <span class="tip-wrap">
+                    <span class="tip-btn" tabindex="0">i</span>
+                    <span class="tip-card tip-right"><strong>Ledger Entries</strong><br>Detailed row-by-row journal of every transaction. Running balance is updated after each row.</span>
+                </span>
+            </h3>
+            <p class="text-xs text-gray-500 mt-0.5">Line 1 is the initial opening balance. Add or edit transactions below.</p>
+        </div>
+        <button type="button" onclick="handleAddEntryClick()" class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition" id="add-entry-btn">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add Entry
+        </button>
+    </div>
+
+    <!-- New Entry Form (hidden by default) -->
+    <div id="new-entry-form" class="hidden border-b border-gray-200 bg-indigo-50">
+        <form method="POST" action="{{ url_for('ledger_add_entry', account_id=account.id) }}" class="px-6 py-4">
+            <div class="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
+                <div class="sm:col-span-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        Date *
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Date</strong><br>The transaction or invoice date.</span>
+                        </span>
+                    </label>
+                    <input type="date" name="entry_date" id="new-entry-date" required
+                           class="block w-full text-sm border-gray-300 rounded-md py-1.5 px-2 border focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        Particulars *
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Particulars</strong><br>Description of goods sold, invoice reference, payment mode (UPI, Cash, Bank), etc.</span>
+                        </span>
+                    </label>
+                    <input type="text" name="particulars" id="new-entry-particulars" required placeholder="e.g. Goods sold, Payment via UPI"
+                           class="block w-full text-sm border-gray-300 rounded-md py-1.5 px-2 border focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                </div>
+                <div class="sm:col-span-1">
+                    <label class="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        Folio / Ref#
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Folio</strong><br>Cross-reference voucher number, receipt number, or bill number.</span>
+                        </span>
+                    </label>
+                    <input type="text" name="folio" id="new-entry-folio" placeholder="e.g. INV-101"
+                           class="block w-full text-sm border-gray-300 rounded-md py-1.5 px-2 border focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        Debit (₹)
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-left"><strong>Debit (₹)</strong><br>Enter amount if this party owes you money (money coming to you).</span>
+                        </span>
+                    </label>
+                    <input type="number" name="debit" step="0.01" min="0" placeholder="0.00" id="new-debit"
+                           class="block w-full text-sm border-gray-300 rounded-md py-1.5 px-2 border focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
+                           oninput="if(this.value > 0) document.getElementById('new-credit').value = ''">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        Credit (₹)
+                        <span class="tip-wrap">
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-left"><strong>Credit (₹)</strong><br>Enter amount if they paid you money or you owe them.</span>
+                        </span>
+                    </label>
+                    <input type="number" name="credit" step="0.01" min="0" placeholder="0.00" id="new-credit"
+                           class="block w-full text-sm border-gray-300 rounded-md py-1.5 px-2 border focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
+                           oninput="if(this.value > 0) document.getElementById('new-debit').value = ''">
+                </div>
+            </div>
+
+            <!-- Optional invoice link -->
+            {% if related_invoices %}
+            <div class="mt-3 flex items-center">
+                <label class="text-xs font-medium text-gray-600 mr-2">Link with Invoice (optional):</label>
+                <select name="invoice_id" id="new-entry-invoice-id" class="text-xs border-gray-300 rounded-md py-1 px-2 border focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                    <option value="">None (Independent Entry)</option>
+                    {% for inv in related_invoices %}
+                    <option value="{{ inv.id }}">{{ inv.invoice_no }} (₹{{ "%.2f"|format(inv.total) }} - {{ inv.invoice_date.strftime('%Y-%m-%d') }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="mt-3 flex justify-end space-x-2">
+                <button type="button" onclick="toggleEntryForm()" class="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 transition">Cancel</button>
+                <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition shadow-sm">Save Entry</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- The Ledger Table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 110px;">
+                        <span class="tip-wrap">
+                            Date
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Date</strong><br>Date transaction occurred.</span>
+                        </span>
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 220px;">
+                        <span class="tip-wrap">
+                            Particulars
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Particulars</strong><br>Description of the item sold, payment received, or reason for transaction.</span>
+                        </span>
+                    </th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 80px;">
+                        <span class="tip-wrap">
+                            Folio
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-right"><strong>Folio / Ref#</strong><br>Reference or voucher number connecting to original document.</span>
+                        </span>
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 120px;">
+                        <span class="tip-wrap">
+                            Debit (₹)
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-left"><strong>Debit (Dr)</strong><br>Money they owe you. Increases receivable balance.</span>
+                        </span>
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 120px;">
+                        <span class="tip-wrap">
+                            Credit (₹)
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-left"><strong>Credit (Cr)</strong><br>Money they paid you. Decreases what they owe you.</span>
+                        </span>
+                    </th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 70px;">
+                        <span class="tip-wrap">
+                            Dr/Cr
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-left"><strong>Balance Type</strong><br><strong>Dr:</strong> Party owes you money.<br><strong>Cr:</strong> You owe party / advance.</span>
+                        </span>
+                    </th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 130px;">
+                        <span class="tip-wrap">
+                            Balance (₹)
+                            <span class="tip-btn" tabindex="0">i</span>
+                            <span class="tip-card tip-left"><strong>Running Balance</strong><br>Calculated automatically after each transaction: Previous Balance + Debit − Credit.</span>
+                        </span>
+                    </th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" style="min-width: 90px;">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% if entries %}
+                    {% for entry in entries %}
+                    <tr class="hover:bg-gray-50 transition {% if entry.is_opening %}bg-amber-50 border-l-4 border-amber-400{% endif %}" id="entry-row-{{ entry.id or 'opening' }}">
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{{ entry.date }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900">
+                            {% if entry.is_opening %}
+                            <span class="font-semibold text-amber-900 flex items-center">
+                                <span>{{ entry.particulars }}</span>
+                                <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-200 text-amber-800">Initial Setup</span>
+                            </span>
+                            {% else %}
+                            <span class="font-medium text-gray-900">{{ entry.particulars }}</span>
+                            {% endif %}
+                            
+                            {% if entry.invoice_id %}
+                            <a href="{{ url_for('view_invoice', invoice_id=entry.invoice_id) }}" class="ml-1 text-xs text-indigo-600 hover:text-indigo-800 underline font-medium" title="View Linked Invoice">[Inv #{{ entry.invoice_id }}]</a>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{{ entry.folio }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium {% if entry.debit > 0 %}text-green-700{% else %}text-gray-300{% endif %}">
+                            {% if entry.debit > 0 %}₹{{ "%.2f"|format(entry.debit) }}{% else %}—{% endif %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium {% if entry.credit > 0 %}text-red-700{% else %}text-gray-300{% endif %}">
+                            {% if entry.credit > 0 %}₹{{ "%.2f"|format(entry.credit) }}{% else %}—{% endif %}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold
+                                {% if entry.balance_type == 'Dr' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                                {{ entry.balance_type }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-gray-800">
+                            ₹{{ "%.2f"|format(entry.balance_amt) }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center text-xs">
+                            {% if entry.is_opening %}
+                            <!-- Action for Opening Balance: Edit Initial Amount -->
+                            <button type="button" onclick="openEditOpeningBalanceModal({{ account.opening_balance }}, '{{ account.opening_balance_type }}')" 
+                                    class="inline-flex items-center px-2 py-1 border border-amber-300 shadow-sm text-xs font-medium rounded text-amber-900 bg-amber-100 hover:bg-amber-200 transition" 
+                                    title="Edit Initial Amount / Opening Balance">
+                                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                Edit Initial
+                            </button>
+                            {% else %}
+                            <!-- Actions for Regular Entry: Edit & Delete -->
+                            <div class="flex items-center justify-center space-x-2">
+                                <button type="button" onclick="handleEditEntryClick({{ entry.id }}, '{{ entry.date }}', '{{ entry.particulars|replace("'", "\\'") }}', '{{ entry.folio }}', {{ entry.debit }}, {{ entry.credit }})" class="text-gray-400 hover:text-indigo-600 transition p-1" title="Edit Entry">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                </button>
+                                <form method="POST" action="{{ url_for('ledger_delete_entry', entry_id=entry.id) }}" class="inline" onsubmit="return handleDeleteEntrySubmit(event)">
+                                    <button type="submit" class="text-gray-400 hover:text-red-600 transition p-1" title="Delete Entry">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-400">
+                            No entries yet. Click "Add Entry" to record your first transaction.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+            {% if entries %}
+            <tfoot class="bg-gray-100">
+                <tr class="font-bold">
+                    <td class="px-4 py-3 text-sm text-gray-700" colspan="3">Grand Totals</td>
+                    <td class="px-4 py-3 text-sm text-right text-green-800">₹{{ "%.2f"|format(account.total_debit) }}</td>
+                    <td class="px-4 py-3 text-sm text-right text-red-800">₹{{ "%.2f"|format(account.total_credit) }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold
+                            {% if bal_type == 'Dr' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                            {{ bal_type }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-right text-gray-900">₹{{ "%.2f"|format(bal_amt) }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<!-- Related Invoices Section -->
+{% if related_invoices %}
+<div class="bg-white shadow rounded-lg mb-6">
+    <div class="px-4 py-4 border-b border-gray-200 sm:px-6 flex justify-between items-center">
+        <div>
+            <h3 class="text-md font-semibold text-gray-800 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Related Invoices for "{{ account.account_name }}"
+            </h3>
+            <p class="mt-1 text-xs text-gray-500">Invoices automatically matched by client name. You can preview them or add them directly to this ledger.</p>
+        </div>
+        <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-semibold">
+            {{ related_invoices|length }} Invoices Found
+        </span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice No.</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for inv in related_invoices %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-3 text-sm font-medium text-gray-900">{{ inv.invoice_no }}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">{{ inv.invoice_date.strftime('%Y-%m-%d') }}</td>
+                    <td class="px-6 py-3 text-sm text-right font-medium text-gray-900">₹{{ "%.2f"|format(inv.total) }}</td>
+                    <td class="px-6 py-3 text-sm text-gray-500">{{ inv.due_date.strftime('%Y-%m-%d') }}</td>
+                    <td class="px-6 py-3 text-sm text-right space-x-2">
+                        <a href="{{ url_for('view_invoice', invoice_id=inv.id) }}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded-md text-xs font-medium">Preview</a>
+                        <button type="button" onclick="populateEntryFromInvoice('{{ inv.id }}', '{{ inv.invoice_no }}', '{{ inv.invoice_date.strftime('%Y-%m-%d') }}', {{ inv.total }})" class="text-green-700 hover:text-green-900 bg-green-50 px-3 py-1 rounded-md text-xs font-medium" title="Pre-fill Add Entry with this invoice">
+                            + Add as Entry
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- 1. Unlock Password Modal -->
+<div id="unlockModal" class="fixed z-50 inset-0 overflow-y-auto hidden" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeUnlockModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+            <form method="POST" action="{{ url_for('ledger_unlock') }}">
+                <input type="hidden" name="redirect_url" value="{{ request.path }}">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center mr-3">
+                            <svg class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">Unlock Ledger for Editing</h3>
+                            <p class="text-xs text-gray-500">Security verification required before modifying records</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Enter your account password:</label>
+                        <input type="password" name="password" id="unlock-password-input" required autofocus class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border shadow-sm" placeholder="Password">
+                        <p class="mt-2 text-xs text-gray-500">Once unlocked, editing is enabled until you lock it or log out.</p>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 sm:ml-3 sm:w-auto sm:text-sm">
+                        Unlock Editing
+                    </button>
+                    <button type="button" onclick="closeUnlockModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Edit Initial Amount (Opening Balance) Modal -->
+<div id="editOpeningBalanceModal" class="fixed z-50 inset-0 overflow-y-auto hidden" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeEditOpeningBalanceModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+            <form method="POST" action="{{ url_for('ledger_edit_opening_balance', account_id=account.id) }}">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center mr-3">
+                            <svg class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">Edit Initial Amount</h3>
+                            <p class="text-xs text-gray-500">Opening balance for {{ account.account_name }}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                Initial Amount (₹)
+                                <span class="tip-wrap">
+                                    <span class="tip-btn" tabindex="0">i</span>
+                                    <span class="tip-card tip-right"><strong>Amount (₹)</strong><br>Starting balance brought forward. Set to 0 if starting with a clean slate.</span>
+                                </span>
+                            </label>
+                            <input type="number" name="opening_balance" id="modal_opening_balance" step="0.01" min="0" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                Balance Type
+                                <span class="tip-wrap">
+                                    <span class="tip-btn" tabindex="0">i</span>
+                                    <span class="tip-card tip-right"><strong>Dr vs Cr</strong><br><strong>Debit (Dr):</strong> Party owes you money (Receivable).<br><strong>Credit (Cr):</strong> You owe party / they gave an advance (Payable).</span>
+                                </span>
+                            </label>
+                            <select name="opening_balance_type" id="modal_opening_balance_type" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm border">
+                                <option value="Dr">Debit (Dr) — Party owes you money</option>
+                                <option value="Cr">Credit (Cr) — You owe party money (Advance)</option>
+                            </select>
+                        </div>
+
+                        {% if not is_unlocked %}
+                        <div class="bg-amber-50 border border-amber-200 rounded-md p-3">
+                            <label class="block text-xs font-semibold text-amber-900 mb-1">Enter your password to authorize change:</label>
+                            <input type="password" name="password" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md py-1.5 px-3 border bg-white shadow-sm" placeholder="Account Password">
+                            <p class="text-xs text-amber-700 mt-1">Ledger is currently locked. Entering password will unlock and update.</p>
+                        </div>
+                        {% endif %}
+
+                        <p class="text-xs text-gray-500 italic">
+                            Note: Changing the initial amount automatically updates the running balance for all transaction entries in this ledger.
+                        </p>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 sm:ml-3 sm:w-auto sm:text-sm">
+                        Update Initial Amount
+                    </button>
+                    <button type="button" onclick="closeEditOpeningBalanceModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Edit Entry Modal -->
+<div id="editEntryModal" class="fixed z-50 inset-0 overflow-y-auto hidden" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeEditEntryModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <form id="editEntryForm" method="POST" action="">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Edit Ledger Entry</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Date *</label>
+                            <input type="date" name="entry_date" id="edit-entry-date" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 border focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Particulars *</label>
+                            <input type="text" name="particulars" id="edit-entry-particulars" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 border focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Folio / Ref#</label>
+                            <input type="text" name="folio" id="edit-entry-folio" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 border focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Debit (₹)</label>
+                                <input type="number" name="debit" id="edit-entry-debit" step="0.01" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 border focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                       oninput="if(this.value > 0) document.getElementById('edit-entry-credit').value = 0">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Credit (₹)</label>
+                                <input type="number" name="credit" id="edit-entry-credit" step="0.01" min="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 border focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                       oninput="if(this.value > 0) document.getElementById('edit-entry-debit').value = 0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 sm:ml-3 sm:w-auto sm:text-sm">Save Changes</button>
+                    <button type="button" onclick="closeEditEntryModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Delete Account Modal -->
+<div id="deleteAccountModal" class="fixed z-50 inset-0 overflow-y-auto hidden" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeDeleteAccountModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <form method="POST" action="{{ url_for('ledger_delete_account', account_id=account.id) }}">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Delete Account "{{ account.account_name }}"</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">This will permanently delete this account and <strong>all {{ entries|length }} entries</strong>. This action cannot be undone.</p>
+                                <div class="mt-4">
+                                    <label class="block text-sm font-medium text-gray-700">Enter your password to confirm deletion:</label>
+                                    <input type="password" name="password" required class="mt-1 focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border border-gray-300 rounded-md py-2 px-3 shadow-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm">Confirm Delete</button>
+                    <button type="button" onclick="closeDeleteAccountModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const IS_UNLOCKED = {{ 'true' if is_unlocked else 'false' }};
+
+    function handleAddEntryClick() {
+        if (!IS_UNLOCKED) {
+            openUnlockModal();
+            return;
+        }
+        toggleEntryForm();
+    }
+
+    function handleEditAccountClick() {
+        if (!IS_UNLOCKED) {
+            openUnlockModal();
+            return;
+        }
+        window.location.href = "{{ url_for('ledger_edit_account', account_id=account.id) }}";
+    }
+
+    function handleEditEntryClick(entryId, date, particulars, folio, debit, credit) {
+        if (!IS_UNLOCKED) {
+            openUnlockModal();
+            return;
+        }
+        openEditEntryModal(entryId, date, particulars, folio, debit, credit);
+    }
+
+    function handleDeleteEntrySubmit(e) {
+        if (!IS_UNLOCKED) {
+            e.preventDefault();
+            openUnlockModal();
+            return false;
+        }
+        return confirm('Are you sure you want to delete this ledger entry?');
+    }
+
+    function toggleEntryForm() {
+        const form = document.getElementById('new-entry-form');
+        form.classList.toggle('hidden');
+        if (!form.classList.contains('hidden')) {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = form.querySelector('input[name="entry_date"]');
+            if (dateInput && !dateInput.value) dateInput.value = today;
+            form.querySelector('input[name="particulars"]').focus();
+        }
+    }
+
+    function populateEntryFromInvoice(invoiceId, invoiceNo, invoiceDate, invoiceTotal) {
+        if (!IS_UNLOCKED) {
+            openUnlockModal();
+            return;
+        }
+        const form = document.getElementById('new-entry-form');
+        form.classList.remove('hidden');
+        
+        const dateInput = document.getElementById('new-entry-date');
+        const particularsInput = document.getElementById('new-entry-particulars');
+        const folioInput = document.getElementById('new-entry-folio');
+        const debitInput = document.getElementById('new-debit');
+        const creditInput = document.getElementById('new-credit');
+        const invSelect = document.getElementById('new-entry-invoice-id');
+        
+        if (dateInput) dateInput.value = invoiceDate;
+        if (particularsInput) particularsInput.value = 'Sale as per Inv #' + invoiceNo;
+        if (folioInput) folioInput.value = invoiceNo;
+        if (debitInput) debitInput.value = invoiceTotal;
+        if (creditInput) creditInput.value = '';
+        if (invSelect) invSelect.value = invoiceId;
+
+        form.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function openEditOpeningBalanceModal(currentAmount, currentType) {
+        document.getElementById('modal_opening_balance').value = currentAmount || 0;
+        document.getElementById('modal_opening_balance_type').value = currentType || 'Dr';
+        document.getElementById('editOpeningBalanceModal').classList.remove('hidden');
+    }
+
+    function closeEditOpeningBalanceModal() {
+        document.getElementById('editOpeningBalanceModal').classList.add('hidden');
+    }
+
+    function openEditEntryModal(entryId, date, particulars, folio, debit, credit) {
+        document.getElementById('edit-entry-date').value = date;
+        document.getElementById('edit-entry-particulars').value = particulars;
+        document.getElementById('edit-entry-folio').value = folio;
+        document.getElementById('edit-entry-debit').value = debit || 0;
+        document.getElementById('edit-entry-credit').value = credit || 0;
+        document.getElementById('editEntryForm').action = '/ledger/entry/' + entryId + '/edit';
+        document.getElementById('editEntryModal').classList.remove('hidden');
+    }
+
+    function closeEditEntryModal() {
+        document.getElementById('editEntryModal').classList.add('hidden');
+    }
+
+    function openUnlockModal() {
+        const modal = document.getElementById('unlockModal');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            const input = document.getElementById('unlock-password-input');
+            if (input) input.focus();
+        }, 100);
+    }
+
+    function closeUnlockModal() {
+        document.getElementById('unlockModal').classList.add('hidden');
+    }
+
+    function openDeleteAccountModal() {
+        document.getElementById('deleteAccountModal').classList.remove('hidden');
+    }
+
+    function closeDeleteAccountModal() {
+        document.getElementById('deleteAccountModal').classList.add('hidden');
+    }
+</script>
+{% endblock %}
