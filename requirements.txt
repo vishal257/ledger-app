@@ -1,0 +1,9 @@
+Flask>=3.0.0
+Flask-Login>=0.6.3
+Flask-SQLAlchemy>=3.1.1
+SQLAlchemy>=2.0.0
+Werkzeug>=3.0.0
+xhtml2pdf>=0.2.16
+svglib>=1.5.1
+psycopg2-binary
+Flask-Mail>=0.10.0

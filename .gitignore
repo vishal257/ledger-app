@@ -18,3 +18,4 @@ instance/
 .webassets-cache
 .DS_Store
 Thumbs.db
+*.webp

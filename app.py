@@ -16,9 +16,17 @@ from sqlalchemy.pool import NullPool
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///ledger.db')
-if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
-    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
+db_url = os.environ.get('DATABASE_URL')
+if not db_url:
+    # On Vercel serverless functions, the root directory is read-only; use /tmp for sqlite fallback
+    if os.environ.get('VERCEL'):
+        db_url = 'sqlite:////tmp/ledger.db'
+    else:
+        db_url = 'sqlite:///ledger.db'
+elif db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'poolclass': NullPool
@@ -36,22 +44,25 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'visha
 db.init_app(app)
 
 with app.app_context():
-    db.create_all()
-    from sqlalchemy import text
-    columns = [
-        'company_name VARCHAR(200)',
-        'company_address VARCHAR(500)',
-        'company_email VARCHAR(150)',
-        'company_phone VARCHAR(50)',
-        'payment_instructions TEXT',
-        'invoice_notes TEXT'
-    ]
-    for col in columns:
-        try:
-            db.session.execute(text(f'ALTER TABLE "user" ADD COLUMN {col}'))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+    try:
+        db.create_all()
+        from sqlalchemy import text
+        columns = [
+            'company_name VARCHAR(200)',
+            'company_address VARCHAR(500)',
+            'company_email VARCHAR(150)',
+            'company_phone VARCHAR(50)',
+            'payment_instructions TEXT',
+            'invoice_notes TEXT'
+        ]
+        for col in columns:
+            try:
+                db.session.execute(text(f'ALTER TABLE "user" ADD COLUMN {col}'))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+    except Exception as e:
+        print(f"DB startup note: {e}")
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
